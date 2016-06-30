@@ -53,5 +53,6 @@ private
 
 	procedure Error_Register (Input: in String);
 	procedure Error_Opcode (Input: in String);
+	procedure Error_Number (Input: in String);
 
 end Assemble_Functions;

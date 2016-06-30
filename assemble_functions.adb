@@ -419,14 +419,21 @@ Package body Assemble_Functions is
 			Out_Num: SB.Bounded_String;
 			Done: SB.Bounded_String:= SB.To_Bounded_String("00000");
 			Temp: String:= "                    ";
+			Temp_Integer: Integer;
 
 		begin
-			I_IO.Put(To=>Temp, Item=>Integer'Value(SB.To_String(Input)), Base=>2);
+			Temp_Integer:= Integer'Value(SB.To_String(Input));
+			I_IO.Put(To=>Temp, Item=>Temp_Integer, Base=>2);
 			Out_Num:= SB.To_Bounded_String(Temp);
 			Out_Num:= SB.Bounded_Slice(Out_Num, SB.Index(Out_Num, "#", 1)+1, SB.Length(Out_Num)-1);
 			SB.Replace_Slice(Done, 5-SB.Length(Out_Num)+1, 5, SB.To_String(Out_Num));
 			return Done;
 
+		exception
+			when Constraint_Error => 
+				Error_Number(SB.To_String(Input));
+				return SB.To_Bounded_String("00000");
+				
 	end Get_Binary_5;
 
 
@@ -434,13 +441,19 @@ Package body Assemble_Functions is
 			Out_Num: SB.Bounded_String;
 			Done: SB.Bounded_String:= SB.To_Bounded_String("0000000000000000");
 			Temp: String:= "                    ";
+			Temp_Integer: Integer;
 
 		begin
-			I_IO.Put(To=>Temp, Item=>Integer'Value(SB.To_String(Input)), Base=>2);
+			Temp_Integer:= Integer'Value(SB.To_String(Input));
+			I_IO.Put(To=>Temp, Item=>Temp_Integer, Base=>2);
 			Out_Num:= SB.To_Bounded_String(Temp);
 			Out_Num:= SB.Bounded_Slice(Out_Num, SB.Index(Out_Num, "#", 1)+1, SB.Length(Out_Num)-1);
 			SB.Replace_Slice(Done, 16-SB.Length(Out_Num)+1, 16, SB.To_String(Out_Num));
 			return Done;
+		exception
+			when Constraint_Error => 
+				Error_Number(SB.To_String(Input));
+				return SB.To_Bounded_String("00000");
 
 	end Get_Binary_16;
 
@@ -449,13 +462,19 @@ Package body Assemble_Functions is
 			Out_Num: SB.Bounded_String;
 			Done: SB.Bounded_String:= SB.To_Bounded_String("00000000000000000000000000");
 			Temp: String:= "                                ";
+			Temp_Integer: Integer;
 			
 		begin
-			I_IO.Put(To=>Temp, Item=>Integer'Value(SB.To_String(Input))/4, Base=>2);
+			Temp_Integer:= Integer'Value(SB.To_String(Input))/4;
+			I_IO.Put(To=>Temp, Item=>Temp_Integer, Base=>2);
 			Out_Num:= SB.To_Bounded_String(Temp);
 			Out_Num:= SB.Bounded_Slice(Out_Num, SB.Index(Out_Num, "#", 1)+1, SB.Length(Out_Num)-1);
 			SB.Replace_Slice(Done, 26-SB.Length(Out_Num)+1, 26, SB.To_String(Out_Num));
 			return Done;
+		exception
+			when Constraint_Error => 
+				Error_Number(SB.To_String(Input));
+				return SB.To_Bounded_String("00000");
 
 	end Get_Binary_26;
 
@@ -469,6 +488,17 @@ Package body Assemble_Functions is
 			Error_Flag:= True;
 
 	end Error_Register;
+
+
+	procedure Error_Number (Input: in String) is
+		begin
+			Put(Positive'Image(Current_Line_Number));
+			Put("::Value '");
+			Put(Input);
+			Put_Line("' not valid");
+			Error_Flag:= True;
+
+	end Error_Number;
 
 
 	procedure Error_Opcode (Input: in String) is
