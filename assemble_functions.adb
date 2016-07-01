@@ -1,6 +1,6 @@
 Package body Assemble_Functions is
 
-	function  Build (Source_File, Output_File: in File_Type) return Boolean is
+	function Build (Source_File, Output_File: in File_Type) return Boolean is
 			Current_Line: SB.Bounded_String;
 
 		begin
@@ -497,15 +497,11 @@ Package body Assemble_Functions is
 			Out_Num: SB.Bounded_String;
 			Done: SB.Bounded_String:= SB.To_Bounded_String("00000000000000000000000000");
 			Temp: String:= "                                ";
-			type Integer_26 is range 0..268435455;
+			type Integer_26 is range 0..67108863;
 			Temp_Integer: Integer_26;
 
 		begin
 			Temp_Integer:= Integer_26'Value(SB.To_String(Input));
-			if Temp_Integer mod 4 /= 0 then
-				raise Constraint_Error;
-			end if;
-			Temp_Integer:= Temp_Integer/4;
 			I_IO.Put(To=>Temp, Item=>Integer(Temp_Integer), Base=>2);
 			Out_Num:= SB.To_Bounded_String(Temp);
 			Out_Num:= SB.Bounded_Slice(Out_Num, SB.Index(Out_Num, "#", 1)+1, SB.Length(Out_Num)-1);
