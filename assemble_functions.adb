@@ -67,7 +67,7 @@ Package body Assemble_Functions is
 					SB.Append(Output, Special_1);
 					SB.Append(Output, Special_2);
 
-				when ADDI_32..XORI_32 =>
+				when ADDI_32..SUBIU_32 =>
 					SB.Append(Output, Special_1);
 					SB.Append(Output, Field_2);
 					SB.Append(Output, Field_1);
@@ -162,16 +162,16 @@ Package body Assemble_Functions is
 		begin
 			case Op_Code is  
 				when BAL_32 =>
-					IMM:= Get_Binary_16(Field_1);
+					IMM:= Get_Binary_16_Signed(Field_1);
 
 				when BEQ_32 =>
 					Field_1:= Get_Register(Field_1);
 					Field_2:= Get_Register(Field_2);
-					IMM:= Get_Binary_16(Field_3);
+					IMM:= Get_Binary_16_Signed(Field_3);
 
 				when BGEZ_32..BLEZAL_32 => 
 					Field_1:= Get_Register(Field_1);
-					IMM:= Get_Binary_16(Field_2);
+					IMM:= Get_Binary_16_Signed(Field_2);
 
 				when J_32..SJAL_32 =>
 					IMM:= Get_Binary_26(Field_1);
@@ -189,9 +189,14 @@ Package body Assemble_Functions is
 					Field_2:= Get_Register(Field_2);
 					IMM:= Get_Binary_16(Field_3);
 
+				when ADDIU_32..SUBIU_32 =>
+					Field_1:= Get_Register(Field_1);
+					Field_2:= Get_Register(Field_2);
+					IMM:= Get_Binary_16_Signed(Field_3);
+
 				when LUI_32 => 
 					Field_1:= Get_Register(Field_1);
-					IMM:= Get_Binary_16(Field_2);
+					IMM:= Get_Binary_16_Signed(Field_2);
 					Base:= SB.To_Bounded_String("00000");
 
 				when LW_32..SW_32 =>
@@ -199,7 +204,7 @@ Package body Assemble_Functions is
 					Index_Start:= SB.Index(Field_2, "(", 1);
 					Index_End:= SB.Index(Field_2, ")", Index_Start);
 					Base:= Get_Binary_5(SB.Bounded_Slice(Field_2, Index_Start+1, Index_End-1));
-					IMM:= Get_Binary_16(SB.Bounded_Slice(Field_2, 1, Index_Start-1));
+					IMM:= Get_Binary_16_Signed(SB.Bounded_Slice(Field_2, 1, Index_Start-1));
 
 				when BCPU_32 =>
 					Field_1:= Get_Binary_5(Field_1);
@@ -419,11 +424,12 @@ Package body Assemble_Functions is
 			Out_Num: SB.Bounded_String;
 			Done: SB.Bounded_String:= SB.To_Bounded_String("00000");
 			Temp: String:= "                    ";
-			Temp_Integer: Integer;
+			type Integer_5 is range 0..31;
+			Temp_Integer: Integer_5;
 
 		begin
-			Temp_Integer:= Integer'Value(SB.To_String(Input));
-			I_IO.Put(To=>Temp, Item=>Temp_Integer, Base=>2);
+			Temp_Integer:= Integer_5'Value(SB.To_String(Input));
+			I_IO.Put(To=>Temp, Item=>Integer(Temp_Integer), Base=>2);
 			Out_Num:= SB.To_Bounded_String(Temp);
 			Out_Num:= SB.Bounded_Slice(Out_Num, SB.Index(Out_Num, "#", 1)+1, SB.Length(Out_Num)-1);
 			SB.Replace_Slice(Done, 5-SB.Length(Out_Num)+1, 5, SB.To_String(Out_Num));
@@ -440,41 +446,76 @@ Package body Assemble_Functions is
 	function Get_Binary_16 (Input: in SB.Bounded_String) return SB.Bounded_String is
 			Out_Num: SB.Bounded_String;
 			Done: SB.Bounded_String:= SB.To_Bounded_String("0000000000000000");
-			Temp: String:= "                    ";
-			Temp_Integer: Integer;
+			Temp: String:= "                                ";
+			type Integer_16 is range 0..65535;
+			Temp_Integer: Integer_16;
 
 		begin
-			Temp_Integer:= Integer'Value(SB.To_String(Input));
-			I_IO.Put(To=>Temp, Item=>Temp_Integer, Base=>2);
+			Temp_Integer:= Integer_16'Value(SB.To_String(Input));
+			I_IO.Put(To=>Temp, Item=>Integer(Temp_Integer), Base=>2);
 			Out_Num:= SB.To_Bounded_String(Temp);
 			Out_Num:= SB.Bounded_Slice(Out_Num, SB.Index(Out_Num, "#", 1)+1, SB.Length(Out_Num)-1);
 			SB.Replace_Slice(Done, 16-SB.Length(Out_Num)+1, 16, SB.To_String(Out_Num));
 			return Done;
+
 		exception
 			when Constraint_Error => 
 				Error_Number(SB.To_String(Input));
-				return SB.To_Bounded_String("00000");
+				return SB.To_Bounded_String("0000000000000000");
 
 	end Get_Binary_16;
+
+
+	function Get_Binary_16_Signed (Input: in SB.Bounded_String) return SB.Bounded_String is
+			Out_Num: SB.Bounded_String;
+			Done: SB.Bounded_String:= SB.To_Bounded_String("0000000000000000");
+			Temp: String:= "                                ";
+			type Integer_16 is range -32768..32767;
+			Temp_Integer: Integer_16;
+
+		begin
+			Temp_Integer:= Integer_16'Value(SB.To_String(Input));
+			if Temp_Integer < 0 then
+				Temp_Integer:= Integer_16(Integer(Temp_Integer)+32768);
+				Done:= SB.To_Bounded_String("1000000000000000");
+			end if;
+			I_IO.Put(To=>Temp, Item=>Integer(Temp_Integer), Base=>2);
+			Out_Num:= SB.To_Bounded_String(Temp);
+			Out_Num:= SB.Bounded_Slice(Out_Num, SB.Index(Out_Num, "#", 1)+1, SB.Length(Out_Num)-1);
+			SB.Replace_Slice(Done, 16-SB.Length(Out_Num)+1, 16, SB.To_String(Out_Num));
+			return Done;
+
+		exception
+			when Constraint_Error => 
+				Error_Number(SB.To_String(Input));
+				return SB.To_Bounded_String("0000000000000000");
+
+	end Get_Binary_16_Signed;
 
 
 	function Get_Binary_26 (Input: in SB.Bounded_String) return SB.Bounded_String is
 			Out_Num: SB.Bounded_String;
 			Done: SB.Bounded_String:= SB.To_Bounded_String("00000000000000000000000000");
 			Temp: String:= "                                ";
-			Temp_Integer: Integer;
-			
+			type Integer_26 is range 0..268435455;
+			Temp_Integer: Integer_26;
+
 		begin
-			Temp_Integer:= Integer'Value(SB.To_String(Input))/4;
-			I_IO.Put(To=>Temp, Item=>Temp_Integer, Base=>2);
+			Temp_Integer:= Integer_26'Value(SB.To_String(Input));
+			if Temp_Integer mod 4 /= 0 then
+				raise Constraint_Error;
+			end if;
+			Temp_Integer:= Temp_Integer/4;
+			I_IO.Put(To=>Temp, Item=>Integer(Temp_Integer), Base=>2);
 			Out_Num:= SB.To_Bounded_String(Temp);
 			Out_Num:= SB.Bounded_Slice(Out_Num, SB.Index(Out_Num, "#", 1)+1, SB.Length(Out_Num)-1);
 			SB.Replace_Slice(Done, 26-SB.Length(Out_Num)+1, 26, SB.To_String(Out_Num));
 			return Done;
+
 		exception
 			when Constraint_Error => 
 				Error_Number(SB.To_String(Input));
-				return SB.To_Bounded_String("00000");
+				return SB.To_Bounded_String("00000000000000000000000000");
 
 	end Get_Binary_26;
 

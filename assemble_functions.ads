@@ -14,8 +14,8 @@ private
 
 	type Op_Codes is (BAL_32, BEQ_32, BGEZ_32, BGEZAL_32, BGTZ_32, BGTZAL_32, BLTZ_32, BLTZAL_32, BLEZ_32, BLEZAL_32,
 		J_32, JAL_32, SJAL_32, JALR_32, JR_32, ADD_32, ADDU_32, AND_32, DIV_32, DIVU_32, MOD_32, MODU_32, MUL_32, MULU_32, NAND_32, 
-		NOR_32, OR_32, SUB_32, SUBU_32, SLL_32, SLT_32, SRA_32, SRL_32, SLTU_32, XOR_32, ADDI_32, ADDIU_32, ANDI_32,
-		NORI_32, ORI_32, SLTI_32, SLRIU_32, SLLI_32, SRAI_32, SRLI_32, SUBI_32, SUBIU_32, XORI_32, LUI_32, LW_32, SW_32,
+		NOR_32, OR_32, SUB_32, SUBU_32, SLL_32, SLT_32, SRA_32, SRL_32, SLTU_32, XOR_32, ADDI_32, ANDI_32,
+		NORI_32, ORI_32, SLTI_32, SLLI_32, SRAI_32, SRLI_32, SUBI_32, XORI_32, ADDIU_32, SLRIU_32, SUBIU_32, LUI_32, LW_32, SW_32,
 		BCPU_32, BCPUJ_32, BCPUJR_32, EXIT_32, SLEEP_32);
 
 	type Registers is (r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11,
@@ -49,6 +49,7 @@ private
 	--gets Binary version of integer value
 	function Get_Binary_5 (Input: in SB.Bounded_String) return SB.Bounded_String;
 	function Get_Binary_16 (Input: in SB.Bounded_String) return SB.Bounded_String;
+	function Get_Binary_16_Signed (Input: in SB.Bounded_String) return SB.Bounded_String;
 	function Get_Binary_26 (Input: in SB.Bounded_String) return SB.Bounded_String;
 
 	procedure Error_Register (Input: in String);
