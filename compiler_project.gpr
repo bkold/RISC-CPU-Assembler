@@ -1,0 +1,4 @@
+project Compiler_Project is
+	for Languages use ("Ada");
+	for Main use ("compiler.adb");
+end Compiler_Project;

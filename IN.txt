@@ -1,6 +1,10 @@
-addi_32 r3, r0, -12
-addu_32 r4, r3, r2
+[LABEL]
+addi_32 r3, r0, 2
+addu_32 r4, r3, r2 -comment
 addu_32 r2, r3, r0
 BCPU_32 1, 1
+-Testing the label systen
+beq_32 r2, r3, LABEL2
 beq_32 r2, r3, 3
-jal_32 28
+[LABEL2]
+jal_32 LABEL

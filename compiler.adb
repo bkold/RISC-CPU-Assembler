@@ -1,27 +1,50 @@
 with Ada.Text_IO;
-with Ada.Command_Line;
 with Assemble_Functions;
 with Ada.Directories;
-use Ada.Command_Line;
+with GNAT.Command_Line;
+with Ada.Strings.Bounded;
+use GNAT.Command_Line;
 use Ada.Text_IO;
 
 --main function controls reading and writing
 --assemble package handles each line
 
 procedure Compiler is
-		Mode: Integer;
+		package B_S is new Ada.Strings.Bounded.Generic_Bounded_Length(Max => 50);
+		Mode: Integer:= 0;
 		Source_File: File_Type;
 		Output_File: File_Type;	
-		Error_Flag: Boolean;
+		Error_Flag: Boolean:= True;
+		Output_File_Name: B_S.Bounded_String;
+		Input_File_Name: B_S.Bounded_String;
 	begin
-		if Argument(1) = "-d" then --disassemble
-			Mode:=1;
-		elsif Argument(1) = "-a" then --assemble
-			Mode:=2;
-		end if;
+		loop
+			case Getopt ("a d  o:") is
+				when 'a' =>
+					if Mode = 0 then
+						Mode:=2;
+					else
+						Put_Line("Conflicting agument: '-a'");
+						return;
+					end if;
+				when 'd' =>
+					if Mode = 0 then
+						Mode:=1;
+					else
+						Put_Line("Conflicting agument: '-d'");
+						return;
+					end if;
+				when 'o' =>
+					Output_File_Name:= B_S.To_Bounded_String(Parameter);
+				when others =>
+					exit;
+			end case;
+		end loop;
+
+		Input_File_Name:= B_S.To_Bounded_String(Get_Argument);
 
 		--open files
-		Open(Source_File, In_File, Argument(2));
+		Open(Source_File, In_File, B_S.To_String(Input_File_Name));
 		Create(File=>Output_File, Name=>"~Out.s");
 
 		if Mode = 2 then
@@ -34,11 +57,11 @@ procedure Compiler is
 		Close(Output_File);
 
 		if Error_Flag = False then
-			if Argument_Count > 2 then
-				if Ada.Directories.Exists(Argument(3)) then
-					Ada.Directories.Delete_File(Argument(3));
+			if B_S.Length(Output_File_Name) > 0 then
+				if Ada.Directories.Exists(B_S.To_String(Output_File_Name)) then
+					Ada.Directories.Delete_File(B_S.To_String(Output_File_Name));
 				end if;
-				Ada.Directories.Rename("~Out.s", Argument(3));
+				Ada.Directories.Rename("~Out.s", B_S.To_String(Output_File_Name));
 			else
 				if Ada.Directories.Exists("Out.s") then
 					Ada.Directories.Delete_File("Out.s");

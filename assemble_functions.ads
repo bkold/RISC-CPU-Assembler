@@ -1,17 +1,23 @@
 with Ada.Strings.Bounded;
+with Ada.Strings;
 with Ada.Text_IO;
 with Ada.Text_IO.Bounded_IO;
+with Improved_Trie;
 use Ada.Text_IO;
 
 Package Assemble_Functions is
 	
-	function Build (Source_File, Output_File: in File_Type) return Boolean;
+	function Build (Source_File, Output_File: in out File_Type) return Boolean;
 
 private
 	package SB is new Ada.Strings.Bounded.Generic_Bounded_Length(Max => 32);
 	package SB_IO is new Ada.Text_IO.Bounded_IO(Bounded=>SB);
 	package I_IO is new Ada.Text_IO.Integer_IO(Num=>Integer);
+	package Imm_Trie renames Improved_Trie;
 
+	subtype Letter is Character with
+		Static_Predicate => Letter in 'A'..'Z' | 'a'..'z';
+		
 	type Op_Codes is (BAL_32, BEQ_32, BGEZ_32, BGEZAL_32, BGTZ_32, BGTZAL_32, BLTZ_32, BLTZAL_32, BLEZ_32, BLEZAL_32,
 		J_32, JAL_32, SJAL_32, JALR_32, JR_32, ADD_32, ADDU_32, AND_32, DIV_32, DIVU_32, MOD_32, MODU_32, MUL_32, MULU_32, NAND_32, 
 		NOR_32, OR_32, SUB_32, SUBU_32, SLL_32, SLT_32, SRA_32, SRL_32, SLTU_32, XOR_32, ADDI_32, ANDI_32,
@@ -23,9 +29,14 @@ private
 		r25, r26, r27, r28, r29, r30, r31);
 
 	Current_Line_Number: Positive;
+	Instruction_Number: Positive;
 	Error_Flag: Boolean;
+	Label_Tree: Imm_Trie.Trie.Tree;
 
 	function Assemble (Input: in SB.Bounded_String) return SB.Bounded_String;
+
+	procedure Get_Labels (Source_File: in File_Type);
+	procedure Add_Label (Current_Line: in SB.Bounded_String; Instruction_Number: in Integer);
 
 	--parses string
 	--RS, RT and RD are Bounded strings that look like binary
@@ -51,8 +62,10 @@ private
 	function Get_Binary_16 (Input: in SB.Bounded_String) return SB.Bounded_String;
 	function Get_Binary_16_Signed (Input: in SB.Bounded_String) return SB.Bounded_String;
 	function Get_Binary_26 (Input: in SB.Bounded_String) return SB.Bounded_String;
+	function Get_Binary_Parse (Base_String: in SB.Bounded_String; Num: in Natural; Length: in Positive) return SB.Bounded_String;
 
 	procedure Error_Register (Input: in String);
+	procedure Error_Label;
 	procedure Error_Opcode (Input: in String);
 	procedure Error_Number (Input: in String);
 

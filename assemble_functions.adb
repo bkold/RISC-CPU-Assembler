@@ -1,18 +1,67 @@
 Package body Assemble_Functions is
 
-	function Build (Source_File, Output_File: in File_Type) return Boolean is
+	function Build (Source_File, Output_File: in out File_Type) return Boolean is
 			Current_Line: SB.Bounded_String;
-
 		begin
 			Error_Flag:= False;
 			Current_Line_Number:=1;
+			Get_Labels(Source_File);
+			Reset(Source_File);
+			Current_Line_Number:=1;
+			Instruction_Number:=1;
 			while not End_Of_File(Source_File) loop
-				Current_Line:=SB_IO.Get_Line(Source_File);
-				SB_IO.Put_Line(Output_File, Assemble(Current_Line));
-				Current_Line_Number:=Current_Line_Number+1;
+				Current_Line:=SB.To_Bounded_String(Source=>Get_Line(Source_File), Drop=>Ada.Strings.Right);				
+				if SB.Length(Current_Line) > 0 and then SB.Element(Current_Line, SB.Index_Non_Blank(Current_Line)) /= '[' and then SB.Element(Current_Line, SB.Index_Non_Blank(Current_Line)) /= '-' then
+					SB_IO.Put_Line(Output_File, Assemble(Current_Line));
+					Instruction_Number:= Instruction_Number+1;					
+				end if;	
+				Current_Line_Number:=Current_Line_Number+1;			
 			end loop;
 			return Error_Flag;
 	end Build;
+
+
+	procedure Get_Labels (Source_File: in File_Type) is
+			Current_Line: SB.Bounded_String;
+			Char: Character;
+			Index: Integer;
+		begin
+			Instruction_Number:= 1;
+			while not End_Of_File(Source_File) loop
+				Current_Line:=SB.To_Bounded_String(Source=>Get_Line(Source_File), Drop=>Ada.Strings.Right);
+				Index:=SB.Index_Non_Blank(Current_Line);
+				if Index > 0 then
+					Char:= SB.Element(Current_Line, Index);
+					if Char = '[' then
+						--Label
+						Add_Label(Current_Line, Instruction_Number);
+					elsif Char /= '-' then
+						--instruction
+						Instruction_Number:= Instruction_Number+1;
+					end if;
+				end if;
+				Current_Line_Number:=Current_Line_Number+1;
+			end loop;
+
+			return;
+
+	end Get_Labels;
+
+	procedure Add_Label (Current_Line: in SB.Bounded_String; Instruction_Number: in Integer) is
+			Line: SB.Bounded_String;
+		begin	
+			Line:= SB.Bounded_Slice(
+				Current_Line, 
+				SB.Index(Current_Line, "[")+1,
+				SB.Index(Current_Line, "]")-1);
+			if Imm_Trie.Add_String(Label_Tree, SB.To_String(Line), Instruction_Number) = False then
+				Error_Label;
+			end if;
+			return;
+		exception
+			when others=> Error_Label;
+
+	end Add_Label;
 
 
 	function Assemble (Input: in SB.Bounded_String) return SB.Bounded_String is
@@ -142,7 +191,7 @@ Package body Assemble_Functions is
 			end if;
 
 			Index_Start:= SB.Index_Non_Blank(Input, Index_End+1);
-			Index_End:= SB.Index(Input, ",", Index_Start);
+			Index_End:= SB.Index(Input, " ", Index_Start);
 			if Index_End = 0 then
 				Field_3:= (SB.Bounded_Slice(Input, Index_Start, SB.Length(Input)));
 			else 
@@ -158,23 +207,67 @@ Package body Assemble_Functions is
 	procedure Translate_Fields (Op_Code: in Op_Codes; Field_1, Field_2, Field_3: in out SB.Bounded_String; IMM, Base: out SB.Bounded_String) is
 			Index_Start: Natural:= 1;
 			Index_End: Natural:= 1;
+			Label_Integer: Integer;
 
 		begin
 			case Op_Code is  
 				when BAL_32 =>
-					IMM:= Get_Binary_16_Signed(Field_1);
+					if SB.Element(Field_1, 1) in Letter then
+						Label_Integer:= Imm_Trie.Find_String(Label_Tree, SB.To_String(Field_1));
+						if Label_Integer = -1 then
+							Error_Label;
+							IMM:= SB.To_Bounded_String("0000000000000000");
+						else	
+							Label_Integer:= Label_Integer - (Instruction_Number + 1);
+							IMM:=Get_Binary_16_Signed(SB.To_Bounded_String(Integer'Image(Label_Integer)));
+						end if;
+					else
+						IMM:= Get_Binary_16_Signed(Field_1);
+					end if;
 
 				when BEQ_32 =>
 					Field_1:= Get_Register(Field_1);
 					Field_2:= Get_Register(Field_2);
-					IMM:= Get_Binary_16_Signed(Field_3);
+					if SB.Element(Field_3, 1) in Letter then
+						Label_Integer:= Imm_Trie.Find_String(Label_Tree, SB.To_String(Field_3));
+						if Label_Integer = -1 then
+							Error_Label;
+							IMM:= SB.To_Bounded_String("0000000000000000");
+						else	
+							Label_Integer:= Label_Integer - (Instruction_Number + 1);
+							IMM:=Get_Binary_16_Signed(SB.To_Bounded_String(Integer'Image(Label_Integer)));
+						end if;
+					else
+						IMM:= Get_Binary_16_Signed(Field_3);
+					end if;
 
 				when BGEZ_32..BLEZAL_32 => 
 					Field_1:= Get_Register(Field_1);
-					IMM:= Get_Binary_16_Signed(Field_2);
+					if SB.Element(Field_2, 1) in Letter then
+						Label_Integer:= Imm_Trie.Find_String(Label_Tree, SB.To_String(Field_2));
+						if Label_Integer = -1 then
+							Error_Label;
+							IMM:= SB.To_Bounded_String("0000000000000000");
+						else	
+							Label_Integer:= Label_Integer - (Instruction_Number + 1);
+							IMM:=Get_Binary_16_Signed(SB.To_Bounded_String(Integer'Image(Label_Integer)));
+						end if;
+					else
+						IMM:= Get_Binary_16_Signed(Field_2);
+					end if;
 
 				when J_32..SJAL_32 =>
-					IMM:= Get_Binary_26(Field_1);
+					if SB.Element(Field_1, 1) in Letter then
+						Label_Integer:= Imm_Trie.Find_String(Label_Tree, SB.To_String(Field_1));
+						if Label_Integer = -1 then
+							Error_Label;
+							IMM:= SB.To_Bounded_String("0000000000000000");
+						else	
+							IMM:=Get_Binary_26(SB.To_Bounded_String(Integer'Image(Label_Integer)));
+						end if;
+					else
+						IMM:= Get_Binary_26(Field_1);
+					end if;
 
 				when JALR_32..JR_32 =>
 					Field_1:= Get_Register(Field_1);
@@ -211,7 +304,17 @@ Package body Assemble_Functions is
 					Field_2:= Get_Binary_5(Field_2);
 						
 				when BCPUJ_32 =>
-					IMM:= Get_Binary_26(Field_1);
+					if SB.Element(Field_1, 1) in Letter then
+						Label_Integer:= Imm_Trie.Find_String(Label_Tree, SB.To_String(Field_1));
+						if Label_Integer = -1 then
+							Error_Label;
+							IMM:= SB.To_Bounded_String("0000000000000000");
+						else	
+							IMM:=Get_Binary_26(SB.To_Bounded_String(Integer'Image(Label_Integer)));
+						end if;
+					else
+						IMM:= Get_Binary_26(Field_1);
+					end if;
 
 				when BCPUJR_32 => 
 					Field_1:= Get_Register(Field_1);
@@ -421,19 +524,13 @@ Package body Assemble_Functions is
 
 
 	function Get_Binary_5 (Input: in SB.Bounded_String) return SB.Bounded_String is
-			Out_Num: SB.Bounded_String;
-			Done: SB.Bounded_String:= SB.To_Bounded_String("00000");
-			Temp: String:= "                    ";
+			Base_String: SB.Bounded_String:= SB.To_Bounded_String("00000");
 			type Integer_5 is range 0..31;
 			Temp_Integer: Integer_5;
 
 		begin
 			Temp_Integer:= Integer_5'Value(SB.To_String(Input));
-			I_IO.Put(To=>Temp, Item=>Integer(Temp_Integer), Base=>2);
-			Out_Num:= SB.To_Bounded_String(Temp);
-			Out_Num:= SB.Bounded_Slice(Out_Num, SB.Index(Out_Num, "#", 1)+1, SB.Length(Out_Num)-1);
-			SB.Replace_Slice(Done, 5-SB.Length(Out_Num)+1, 5, SB.To_String(Out_Num));
-			return Done;
+			return Get_Binary_Parse(Base_String, Natural(Temp_Integer), 5);
 
 		exception
 			when Constraint_Error => 
@@ -444,19 +541,13 @@ Package body Assemble_Functions is
 
 
 	function Get_Binary_16 (Input: in SB.Bounded_String) return SB.Bounded_String is
-			Out_Num: SB.Bounded_String;
-			Done: SB.Bounded_String:= SB.To_Bounded_String("0000000000000000");
-			Temp: String:= "                                ";
+			Base_String: SB.Bounded_String:= SB.To_Bounded_String("0000000000000000");
 			type Integer_16 is range 0..65535;
 			Temp_Integer: Integer_16;
 
 		begin
 			Temp_Integer:= Integer_16'Value(SB.To_String(Input));
-			I_IO.Put(To=>Temp, Item=>Integer(Temp_Integer), Base=>2);
-			Out_Num:= SB.To_Bounded_String(Temp);
-			Out_Num:= SB.Bounded_Slice(Out_Num, SB.Index(Out_Num, "#", 1)+1, SB.Length(Out_Num)-1);
-			SB.Replace_Slice(Done, 16-SB.Length(Out_Num)+1, 16, SB.To_String(Out_Num));
-			return Done;
+			return Get_Binary_Parse(Base_String, Natural(Temp_Integer), 16);
 
 		exception
 			when Constraint_Error => 
@@ -467,9 +558,7 @@ Package body Assemble_Functions is
 
 
 	function Get_Binary_16_Signed (Input: in SB.Bounded_String) return SB.Bounded_String is
-			Out_Num: SB.Bounded_String;
-			Done: SB.Bounded_String:= SB.To_Bounded_String("0000000000000000");
-			Temp: String:= "                                ";
+			Base_String: SB.Bounded_String:= SB.To_Bounded_String("0000000000000000");
 			type Integer_16 is range -32768..32767;
 			Temp_Integer: Integer_16;
 
@@ -477,13 +566,9 @@ Package body Assemble_Functions is
 			Temp_Integer:= Integer_16'Value(SB.To_String(Input));
 			if Temp_Integer < 0 then
 				Temp_Integer:= Integer_16(Integer(Temp_Integer)+32768);
-				Done:= SB.To_Bounded_String("1000000000000000");
+				Base_String:= SB.To_Bounded_String("1000000000000000");
 			end if;
-			I_IO.Put(To=>Temp, Item=>Integer(Temp_Integer), Base=>2);
-			Out_Num:= SB.To_Bounded_String(Temp);
-			Out_Num:= SB.Bounded_Slice(Out_Num, SB.Index(Out_Num, "#", 1)+1, SB.Length(Out_Num)-1);
-			SB.Replace_Slice(Done, 16-SB.Length(Out_Num)+1, 16, SB.To_String(Out_Num));
-			return Done;
+			return Get_Binary_Parse(Base_String, Natural(Temp_Integer), 16);
 
 		exception
 			when Constraint_Error => 
@@ -494,19 +579,13 @@ Package body Assemble_Functions is
 
 
 	function Get_Binary_26 (Input: in SB.Bounded_String) return SB.Bounded_String is
-			Out_Num: SB.Bounded_String;
-			Done: SB.Bounded_String:= SB.To_Bounded_String("00000000000000000000000000");
-			Temp: String:= "                                ";
+			Base_String: SB.Bounded_String:= SB.To_Bounded_String("00000000000000000000000000");			
 			type Integer_26 is range 0..67108863;
 			Temp_Integer: Integer_26;
 
 		begin
 			Temp_Integer:= Integer_26'Value(SB.To_String(Input));
-			I_IO.Put(To=>Temp, Item=>Integer(Temp_Integer), Base=>2);
-			Out_Num:= SB.To_Bounded_String(Temp);
-			Out_Num:= SB.Bounded_Slice(Out_Num, SB.Index(Out_Num, "#", 1)+1, SB.Length(Out_Num)-1);
-			SB.Replace_Slice(Done, 26-SB.Length(Out_Num)+1, 26, SB.To_String(Out_Num));
-			return Done;
+			return Get_Binary_Parse(Base_String, Natural(Temp_Integer), 26);
 
 		exception
 			when Constraint_Error => 
@@ -514,6 +593,21 @@ Package body Assemble_Functions is
 				return SB.To_Bounded_String("00000000000000000000000000");
 
 	end Get_Binary_26;
+
+
+	function Get_Binary_Parse (Base_String: in SB.Bounded_String; Num: in Natural; Length: in Positive) return SB.Bounded_String is
+			Temp: String:= "                                ";
+			Out_Num: SB.Bounded_String;
+			Done: SB.Bounded_String:= Base_String;
+
+		begin
+			I_IO.Put(To=>Temp, Item=>Num, Base=>2);
+			Out_Num:= SB.To_Bounded_String(Temp);
+			Out_Num:= SB.Bounded_Slice(Out_Num, SB.Index(Out_Num, "#", 1)+1, SB.Length(Out_Num)-1);
+			SB.Replace_Slice(Done, Length-SB.Length(Out_Num)+1, Length, SB.To_String(Out_Num));
+			return Done;
+
+	end Get_Binary_Parse;
 
 
 	procedure Error_Register (Input: in String) is 
@@ -525,6 +619,15 @@ Package body Assemble_Functions is
 			Error_Flag:= True;
 
 	end Error_Register;
+
+
+	procedure Error_Label is 
+		begin
+			Put(Positive'Image(Current_Line_Number));
+			Put_Line(":: Label not valid");
+			Error_Flag:= True;
+
+	end Error_Label;
 
 
 	procedure Error_Number (Input: in String) is
