@@ -8,7 +8,7 @@
 [Label_1]
 Add_32 r1, r2, r3 -add_32 rd, rs, rt
 Add_32 r4, r5, r6 
-J_32 Label_2
+J_32 Label_2 -add_32 rd, rs, rt
 
 [Label_2]
 Add_32 r1, r2, r3

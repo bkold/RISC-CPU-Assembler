@@ -11,7 +11,7 @@ use Ada.Text_IO;
 
 procedure Compiler is
 		package B_S is new Ada.Strings.Bounded.Generic_Bounded_Length(Max => 50);
-		Mode: Integer:= 0;
+		Mode: Integer:= 2; --default to assembler mode
 		Source_File: File_Type;
 		Output_File: File_Type;	
 		Error_Flag: Boolean:= True;
@@ -43,6 +43,10 @@ procedure Compiler is
 
 		Input_File_Name:= B_S.To_Bounded_String(Get_Argument);
 
+		if B_S.Length(Input_File_Name) = 0 then
+			Put_Line("No file name given");
+			return;
+		end if;
 		--open files
 		Open(Source_File, In_File, B_S.To_String(Input_File_Name));
 		Create(File=>Output_File, Name=>"~Out.s");

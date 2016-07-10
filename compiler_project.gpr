@@ -1,5 +1,10 @@
 project Compiler_Project is
 	for Languages use ("Ada");
 	for Source_Dirs  use ("Source");
+	for Object_Dir use "obj";
+	for Exec_Dir use ".";
 	for Main use ("compiler.adb");
+	package Builder is
+		for Executable ("compiler.adb") use "risc-cpu-asm";
+	end Builder;
 end Compiler_Project;

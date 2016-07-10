@@ -2,33 +2,61 @@ Package body Assemble_Functions is
 
 	function Build (Source_File, Output_File: in out File_Type) return Boolean is
 			Current_Line: SB.Bounded_String;
+			Saved_Current_Line_Number: Natural:= Current_Line_Number;
+			Saved_Instruction_Number: Natural:= Instruction_Number;
 		begin
+			Current_Line_Number:=1;			
+			Instruction_Number:= 1;
 			Error_Flag:= False;
-			Current_Line_Number:=1;
 			Get_Labels(Source_File);
-			Reset(Source_File);
-			Current_Line_Number:=1;
-			Instruction_Number:=1;
 			while not End_Of_File(Source_File) loop
-				Current_Line:=SB.To_Bounded_String(Source=>Get_Line(Source_File), Drop=>Ada.Strings.Right);				
-				if SB.Length(Current_Line) > 0 and then SB.Element(Current_Line, SB.Index_Non_Blank(Current_Line)) /= '[' and then SB.Element(Current_Line, SB.Index_Non_Blank(Current_Line)) /= '-' then
-					SB_IO.Put_Line(Output_File, Assemble(Current_Line));
-					Instruction_Number:= Instruction_Number+1;					
+				Current_Line:=Pull_Clean_Line(Source_File);	
+				if SB.Length(Current_Line) > 0 
+					and then SB.Element(Current_Line, SB.Index_Non_Blank(Current_Line)) /= '[' 
+						and then SB.Element(Current_Line, SB.Index_Non_Blank(Current_Line)) /= '-' then
+							SB_IO.Put_Line(Output_File, Assemble(Current_Line));
+							Instruction_Number:= Instruction_Number+1;					
 				end if;	
 				Current_Line_Number:=Current_Line_Number+1;			
 			end loop;
+			Current_Line_Number:=Saved_Current_Line_Number;
+			Instruction_Number:= Saved_Instruction_Number;
+
 			return Error_Flag;
 	end Build;
 
+	function Pull_Clean_Line(Source_File: in File_Type) return SB.Bounded_String is
+			Line: SB_Long.Bounded_String;
+			Index: Natural:= 1;
+		begin
+			Line:= SB_Long.To_Bounded_String(Source=>Get_Line(Source_File), Drop=>Ada.Strings.Right);	
+			Index:= SB_Long.Index(Line, White_Space, Index);
+			while Index > 0 loop --loop to remove the terible tab character
+				SB_Long.Replace_Element(Line, Index, ' ');
+				Index:= Index + 1;
+				Index:= SB_Long.Index(Line, White_Space, Index);
+			end loop;
+			Index:= SB_Long.Index(Line, "-");
+			if Index > 0 then
+				SB_Long.Delete(Line, Index, SB_Long.Length(Line)); --delete the comment 
+			end if;
+			SB_Long.Trim(Line, Ada.Strings.Both);
+			return SB.To_Bounded_String(Source=>SB_Long.To_String(Line), Drop=>Ada.Strings.Right);
 
-	procedure Get_Labels (Source_File: in File_Type) is
+	end Pull_Clean_Line;
+
+
+	procedure Get_Labels (Source_File: in out File_Type) is
 			Current_Line: SB.Bounded_String;
 			Char: Character;
-			Index: Integer;
+			Index: Natural;
+			Saved_Current_Line_Number: Natural:= Current_Line_Number;
+			Saved_Instruction_Number: Natural:= Instruction_Number;
 		begin
+			Current_Line_Number:=1;
 			Instruction_Number:= 1;
 			while not End_Of_File(Source_File) loop
-				Current_Line:=SB.To_Bounded_String(Source=>Get_Line(Source_File), Drop=>Ada.Strings.Right);
+				Current_Line:=Pull_Clean_Line(Source_File);
 				Index:=SB.Index_Non_Blank(Current_Line);
 				if Index > 0 then
 					Char:= SB.Element(Current_Line, Index);
@@ -42,7 +70,10 @@ Package body Assemble_Functions is
 				end if;
 				Current_Line_Number:=Current_Line_Number+1;
 			end loop;
+			Current_Line_Number:=Saved_Current_Line_Number;
+			Instruction_Number:= Saved_Instruction_Number;
 
+			Reset(Source_File);
 			return;
 
 	end Get_Labels;
@@ -50,12 +81,14 @@ Package body Assemble_Functions is
 	procedure Add_Label (Current_Line: in SB.Bounded_String; Instruction_Number: in Integer) is
 			Line: SB.Bounded_String;
 		begin	
+			--Line is set to the string within the brackets
 			Line:= SB.Bounded_Slice(
 				Current_Line, 
 				SB.Index(Current_Line, "[")+1,
 				SB.Index(Current_Line, "]")-1);
+			--adds Line to the Label_Tree
 			if Imm_Trie.Add_String(Label_Tree, SB.To_String(Line), Instruction_Number) = False then
-				Error_Label;
+				Error_Label; --if an error occured
 			end if;
 			return;
 		exception
@@ -77,10 +110,11 @@ Package body Assemble_Functions is
 			Output: SB.Bounded_String;
 
 		begin
-			Get_Fields(Input, Op_Code, Field_1, Field_2, Field_3);
-			Translate_Fields(Op_Code, Field_1, Field_2, Field_3, IMM, Base);
-			Get_Specials(Op_Code, Special_1, Special_2);
+			Get_Fields(Input, Op_Code, Field_1, Field_2, Field_3); --gets the individual fields
+			Translate_Fields(Op_Code, Field_1, Field_2, Field_3, IMM, Base); --converts the fields into binary
+			Get_Specials(Op_Code, Special_1, Special_2); --gets the special fields for the designated op code
 
+			--constructs the instruction
 			case Op_Code is  
 				when BAL_32 =>
 					SB.Append(Output, "0000010000010001");
@@ -178,25 +212,25 @@ Package body Assemble_Functions is
 			Index_End:= SB.Index(Input, ",", Index_Start);
 			if Index_End = 0 then
 				Field_1:= (SB.Bounded_Slice(Input, Index_Start, SB.Length(Input)));
-			else 
-				Field_1:= (SB.Bounded_Slice(Input, Index_Start, Index_End-1));
+				return;
 			end if;
+			Field_1:= (SB.Bounded_Slice(Input, Index_Start, Index_End-1));
 
 			Index_Start:= SB.Index_Non_Blank(Input, Index_End+1);
 			Index_End:= SB.Index(Input, ",", Index_Start);
 			if Index_End = 0 then
 				Field_2:= (SB.Bounded_Slice(Input, Index_Start, SB.Length(Input)));
-			else 
-				Field_2:= (SB.Bounded_Slice(Input, Index_Start, Index_End-1));
+				return;
 			end if;
+			Field_2:= (SB.Bounded_Slice(Input, Index_Start, Index_End-1));
 
 			Index_Start:= SB.Index_Non_Blank(Input, Index_End+1);
 			Index_End:= SB.Index(Input, " ", Index_Start);
 			if Index_End = 0 then
 				Field_3:= (SB.Bounded_Slice(Input, Index_Start, SB.Length(Input)));
-			else 
-				Field_3:= (SB.Bounded_Slice(Input, Index_Start, Index_End-1));
+				return;
 			end if;
+			Field_3:= (SB.Bounded_Slice(Input, Index_Start, Index_End-1));
 
 		exception 
 			when others => return;
