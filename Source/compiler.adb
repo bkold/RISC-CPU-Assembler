@@ -11,7 +11,7 @@ use Ada.Text_IO;
 
 procedure Compiler is
 		package B_S is new Ada.Strings.Bounded.Generic_Bounded_Length(Max => 50);
-		Mode: Integer:= 2; --default to assembler mode
+		Mode: Integer:= 0;
 		Source_File: File_Type;
 		Output_File: File_Type;	
 		Error_Flag: Boolean:= True;
@@ -40,6 +40,10 @@ procedure Compiler is
 					exit;
 			end case;
 		end loop;
+		
+		if Mode = 0 then
+			Mode:= 2; --default to Mode 2
+		end if;
 
 		Input_File_Name:= B_S.To_Bounded_String(Get_Argument);
 
