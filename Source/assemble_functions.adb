@@ -11,11 +11,11 @@ Package body Assemble_Functions is
 			Get_Labels(Source_File);
 			while not End_Of_File(Source_File) loop
 				Current_Line:=Pull_Clean_Line(Source_File);	
-				if SB.Length(Current_Line) > 0 
-					and then SB.Element(Current_Line, SB.Index_Non_Blank(Current_Line)) /= '[' 
-						and then SB.Element(Current_Line, SB.Index_Non_Blank(Current_Line)) /= '-' then
-							SB_IO.Put_Line(Output_File, Assemble(Current_Line));
-							Instruction_Number:= Instruction_Number+1;					
+				if SB.Length(Current_Line) > 0 --if anything is in the string
+					and then SB.Element(Current_Line, SB.Index_Non_Blank(Current_Line)) /= '[' --and not a label line
+						and then SB.Element(Current_Line, SB.Index_Non_Blank(Current_Line)) /= '-' then --and not a comment line
+							SB_IO.Put_Line(Output_File, Assemble(Current_Line)); 
+							Instruction_Number:= Instruction_Number+1;	 --increment for label arithmetic 				
 				end if;	
 				Current_Line_Number:=Current_Line_Number+1;			
 			end loop;
@@ -29,18 +29,20 @@ Package body Assemble_Functions is
 			Line: SB_Long.Bounded_String;
 			Index: Natural:= 1;
 		begin
-			Line:= SB_Long.To_Bounded_String(Source=>Get_Line(Source_File), Drop=>Ada.Strings.Right);	
-			Index:= SB_Long.Index(Line, White_Space, Index);
-			while Index > 0 loop --loop to remove the terible tab character
-				SB_Long.Replace_Element(Line, Index, ' ');
-				Index:= Index + 1;
-				Index:= SB_Long.Index(Line, White_Space, Index);
-			end loop;
+			Line:= SB_Long.To_Bounded_String(Source=>Get_Line(Source_File), Drop=>Ada.Strings.Right);
 			Index:= SB_Long.Index(Line, "-");
 			if Index > 0 then
 				SB_Long.Delete(Line, Index, SB_Long.Length(Line)); --delete the comment 
 			end if;
-			SB_Long.Trim(Line, Ada.Strings.Both);
+
+			SB_Long.Trim(Line, White_Space, White_Space);
+
+			for I in Integer range 1..SB_Long.Length(Line) loop --loop to remove the tab character
+				if SB_Long.Element(Line, I) = Tab then
+					SB_Long.Replace_Element(Line, I, ' ');
+				end if;
+			end loop;
+
 			return SB.To_Bounded_String(Source=>SB_Long.To_String(Line), Drop=>Ada.Strings.Right);
 
 	end Pull_Clean_Line;
@@ -232,6 +234,8 @@ Package body Assemble_Functions is
 			end if;
 			Field_3:= (SB.Bounded_Slice(Input, Index_Start, Index_End-1));
 
+			return;
+
 		exception 
 			when others => return;
 
@@ -241,21 +245,13 @@ Package body Assemble_Functions is
 	procedure Translate_Fields (Op_Code: in Op_Codes; Field_1, Field_2, Field_3: in out SB.Bounded_String; IMM, Base: out SB.Bounded_String) is
 			Index_Start: Natural:= 1;
 			Index_End: Natural:= 1;
-			Label_Integer: Integer;
 
 		begin
 			case Op_Code is  
 				when BAL_32 =>
-					if SB.Element(Field_1, 1) in Letter then
-						Label_Integer:= Imm_Trie.Find_String(Label_Tree, SB.To_String(Field_1));
-						if Label_Integer = -1 then
-							Error_Label;
-							IMM:= SB.To_Bounded_String("0000000000000000");
-						else	
-							Label_Integer:= Label_Integer - (Instruction_Number + 1);
-							IMM:=Get_Binary_16_Signed(SB.To_Bounded_String(Integer'Image(Label_Integer)));
-						end if;
-					else
+					if SB.Element(Field_1, 1) in Letter then --if Field is label
+						IMM:= Get_Binary_16_Signed_Label(Field_1);
+					else --it's a number
 						IMM:= Get_Binary_16_Signed(Field_1);
 					end if;
 
@@ -263,14 +259,7 @@ Package body Assemble_Functions is
 					Field_1:= Get_Register(Field_1);
 					Field_2:= Get_Register(Field_2);
 					if SB.Element(Field_3, 1) in Letter then
-						Label_Integer:= Imm_Trie.Find_String(Label_Tree, SB.To_String(Field_3));
-						if Label_Integer = -1 then
-							Error_Label;
-							IMM:= SB.To_Bounded_String("0000000000000000");
-						else	
-							Label_Integer:= Label_Integer - (Instruction_Number + 1);
-							IMM:=Get_Binary_16_Signed(SB.To_Bounded_String(Integer'Image(Label_Integer)));
-						end if;
+						IMM:= Get_Binary_16_Signed_Label(Field_3);
 					else
 						IMM:= Get_Binary_16_Signed(Field_3);
 					end if;
@@ -278,27 +267,14 @@ Package body Assemble_Functions is
 				when BGEZ_32..BLEZAL_32 => 
 					Field_1:= Get_Register(Field_1);
 					if SB.Element(Field_2, 1) in Letter then
-						Label_Integer:= Imm_Trie.Find_String(Label_Tree, SB.To_String(Field_2));
-						if Label_Integer = -1 then
-							Error_Label;
-							IMM:= SB.To_Bounded_String("0000000000000000");
-						else	
-							Label_Integer:= Label_Integer - (Instruction_Number + 1);
-							IMM:=Get_Binary_16_Signed(SB.To_Bounded_String(Integer'Image(Label_Integer)));
-						end if;
+						IMM:= Get_Binary_16_Signed_Label(Field_2);
 					else
 						IMM:= Get_Binary_16_Signed(Field_2);
 					end if;
 
 				when J_32..SJAL_32 =>
 					if SB.Element(Field_1, 1) in Letter then
-						Label_Integer:= Imm_Trie.Find_String(Label_Tree, SB.To_String(Field_1));
-						if Label_Integer = -1 then
-							Error_Label;
-							IMM:= SB.To_Bounded_String("0000000000000000");
-						else	
-							IMM:=Get_Binary_26(SB.To_Bounded_String(Integer'Image(Label_Integer)));
-						end if;
+						IMM:= Get_Binary_26_Label(Field_1);
 					else
 						IMM:= Get_Binary_26(Field_1);
 					end if;
@@ -338,15 +314,9 @@ Package body Assemble_Functions is
 					Field_2:= Get_Binary_5(Field_2);
 						
 				when BCPUJ_32 =>
-					if SB.Element(Field_1, 1) in Letter then
-						Label_Integer:= Imm_Trie.Find_String(Label_Tree, SB.To_String(Field_1));
-						if Label_Integer = -1 then
-							Error_Label;
-							IMM:= SB.To_Bounded_String("0000000000000000");
-						else	
-							IMM:=Get_Binary_26(SB.To_Bounded_String(Integer'Image(Label_Integer)));
-						end if;
-					else
+					if SB.Element(Field_1, 1) in Letter then 
+						IMM:= Get_Binary_26_Label(Field_1);
+					else 
 						IMM:= Get_Binary_26(Field_1);
 					end if;
 
@@ -361,6 +331,8 @@ Package body Assemble_Functions is
 					return;
 
 			end case;
+
+			return;
 
 	end Translate_Fields;
 
@@ -627,6 +599,38 @@ Package body Assemble_Functions is
 				return SB.To_Bounded_String("00000000000000000000000000");
 
 	end Get_Binary_26;
+
+
+	function Get_Binary_16_Signed_Label (Input: in SB.Bounded_String) return SB.Bounded_String is
+			Label_Integer: Integer;
+			IMM: SB.Bounded_String;
+		begin
+			Label_Integer:= Imm_Trie.Find_String(Label_Tree, SB.To_String(Input));
+			if Label_Integer = -1 then --label is not found
+				Error_Label;
+				IMM:= SB.To_Bounded_String("0000000000000000");
+			else	
+				Label_Integer:= Label_Integer - (Instruction_Number + 1);
+				IMM:=Get_Binary_26(SB.To_Bounded_String(Integer'Image(Label_Integer)));
+			end if;
+
+			return IMM;
+	end Get_Binary_16_Signed_Label;
+
+
+	function Get_Binary_26_Label (Input: in SB.Bounded_String) return SB.Bounded_String is
+			Label_Integer: Integer;
+			IMM: SB.Bounded_String;
+		begin
+			Label_Integer:= Imm_Trie.Find_String(Label_Tree, SB.To_String(Input));
+			if Label_Integer = -1 then --label is not found
+				Error_Label;
+				IMM:= SB.To_Bounded_String("00000000000000000000000000");
+			else					
+				IMM:=Get_Binary_26(SB.To_Bounded_String(Integer'Image(Label_Integer)));
+			end if;
+			return IMM;
+	end Get_Binary_26_Label;
 
 
 	function Get_Binary_Parse (Base_String: in SB.Bounded_String; Num: in Natural; Length: in Positive) return SB.Bounded_String is

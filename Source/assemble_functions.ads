@@ -14,7 +14,7 @@ Package Assemble_Functions is
 
 private
 	package SB is new Ada.Strings.Bounded.Generic_Bounded_Length(Max => 32);
-	package SB_Long is new Ada.Strings.Bounded.Generic_Bounded_Length(Max => 100);
+	package SB_Long is new Ada.Strings.Bounded.Generic_Bounded_Length(Max => 255);
 	package SB_IO is new Ada.Text_IO.Bounded_IO(Bounded=>SB);
 	package I_IO is new Ada.Text_IO.Integer_IO(Num=>Integer);
 	package Imm_Trie renames Improved_Trie;
@@ -43,6 +43,7 @@ private
 	--receives a line of assembly and returns a finished binary string.
 	function Assemble (Input: in SB.Bounded_String) return SB.Bounded_String;
 
+	--returns a clean bounded string. No tabs, not leading and trailing space, and no comment
 	function Pull_Clean_Line(Source_File: in File_Type) return SB.Bounded_String;
 
 	--iterates the file, finding labels: [EXAMPLE]
@@ -75,6 +76,9 @@ private
 	function Get_Binary_16 (Input: in SB.Bounded_String) return SB.Bounded_String;
 	function Get_Binary_16_Signed (Input: in SB.Bounded_String) return SB.Bounded_String;
 	function Get_Binary_26 (Input: in SB.Bounded_String) return SB.Bounded_String;
+
+	function Get_Binary_16_Signed_Label (Input: in SB.Bounded_String) return SB.Bounded_String;
+	function Get_Binary_26_Label (Input: in SB.Bounded_String) return SB.Bounded_String;
 	--generic parsing function to be used by the above Get_Binary functions
 	function Get_Binary_Parse (Base_String: in SB.Bounded_String; Num: in Natural; Length: in Positive) return SB.Bounded_String;
 
