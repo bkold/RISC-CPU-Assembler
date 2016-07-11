@@ -611,7 +611,7 @@ Package body Assemble_Functions is
 				IMM:= SB.To_Bounded_String("0000000000000000");
 			else	
 				Label_Integer:= Label_Integer - (Instruction_Number + 1);
-				IMM:=Get_Binary_26(SB.To_Bounded_String(Integer'Image(Label_Integer)));
+				IMM:=Get_Binary_16_Signed(SB.To_Bounded_String(Integer'Image(Label_Integer)));
 			end if;
 
 			return IMM;
