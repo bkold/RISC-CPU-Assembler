@@ -26,29 +26,38 @@ Package body Assemble_Functions is
 	end Build;
 
 	function Pull_Clean_Line(Source_File: in File_Type) return SB.Bounded_String is
-			Line: SB_Long.Bounded_String;
-			Index: Natural:= 1;
+			Line: SB.Bounded_String;
+			Index: Natural;
 		begin
-
 			declare --resolve the case that the line is full of spaces, hiding the instruction
-				Pulled_Line: String:= Get_Line(Source_File); --get entire line
+				Pulled_Line: String:= Get_Line(File); --get entire line
 			begin
-				Ada.Strings.Fixed.Trim(Pulled_Line, White_Space, White_Space); --remove the leading spaces and tabs
-				Line:= SB_Long.To_Bounded_String(Source=>Pulled_Line, Drop=>Ada.Strings.Right); --move into bounded string
-			end;
-			
-			Index:= SB_Long.Index(Line, "-");
-			if Index > 0 then
-				SB_Long.Delete(Line, Index, SB_Long.Length(Line)); --delete the comment 
-			end if;
-
-			for I in Integer range 1..SB_Long.Length(Line) loop --loop to remove the tab character
-				if SB_Long.Element(Line, I) = Tab then
-					SB_Long.Replace_Element(Line, I, ' ');
+				Index:= Ada.Strings.Fixed.Index(Pulled_Line, "--");
+				if Index > 0 then
+					Ada.Strings.Fixed.Delete(Pulled_Line, Index, Pulled_Line'Length); --delete the comment 
 				end if;
-			end loop;
 
-			return SB.To_Bounded_String(Source=>SB_Long.To_String(Line), Drop=>Ada.Strings.Right);
+				for I in Integer range 1..Pulled_Line'Length loop --loop to remove the tab character
+					if Pulled_Line(I) = Tab then
+						Pulled_Line(I):= ' ';
+					end if;
+				end loop;
+
+				for I in Integer range 1..Pulled_Line'Length loop --remove consecutive spaces
+					if Pulled_Line(I) = ' ' then
+						Index:= Ada.Strings.Fixed.Index_Non_Blank(Pulled_Line, I);
+						if Index > 0 then
+							Ada.Strings.Fixed.Replace_Slice(Pulled_Line, I, Index-1, " ");
+						end if;
+					end if;
+				end loop;
+
+				Ada.Strings.Fixed.Trim(Pulled_Line, White_Space, White_Space); --remove the leading spaces and tabs
+				
+				Line:= BS.To_Bounded_String(Source=>Pulled_Line, Drop=>Ada.Strings.Right); --move into bounded string
+			end;			
+
+			return Line;
 
 	end Pull_Clean_Line;
 
