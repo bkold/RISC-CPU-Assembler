@@ -30,7 +30,7 @@ Package body Assemble_Functions is
 			Index: Natural;
 		begin
 			declare --resolve the case that the line is full of spaces, hiding the instruction
-				Pulled_Line: String:= Get_Line(File); --get entire line
+				Pulled_Line: String:= Get_Line(Source_File); --get entire line
 			begin
 				Index:= Ada.Strings.Fixed.Index(Pulled_Line, "--");
 				if Index > 0 then
@@ -53,8 +53,8 @@ Package body Assemble_Functions is
 				end loop;
 
 				Ada.Strings.Fixed.Trim(Pulled_Line, White_Space, White_Space); --remove the leading spaces and tabs
-				
-				Line:= BS.To_Bounded_String(Source=>Pulled_Line, Drop=>Ada.Strings.Right); --move into bounded string
+
+				Line:= SB.To_Bounded_String(Source=>Pulled_Line, Drop=>Ada.Strings.Right); --move into bounded string
 			end;			
 
 			return Line;
