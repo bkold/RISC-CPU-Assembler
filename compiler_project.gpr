@@ -4,7 +4,14 @@ project Compiler_Project is
 	for Object_Dir use "obj";
 	for Exec_Dir use ".";
 	for Main use ("compiler.adb");
+
+	package Compiler is
+		for Default_Switches ("Ada")
+			use ("-O2");
+	end Compiler;
+
 	package Builder is
 		for Executable ("compiler.adb") use "risc-cpu-asm";
 	end Builder;
+	
 end Compiler_Project;

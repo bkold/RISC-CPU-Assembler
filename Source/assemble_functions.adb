@@ -29,13 +29,18 @@ Package body Assemble_Functions is
 			Line: SB_Long.Bounded_String;
 			Index: Natural:= 1;
 		begin
-			Line:= SB_Long.To_Bounded_String(Source=>Get_Line(Source_File), Drop=>Ada.Strings.Right);
+
+			declare --resolve the case that the line is full of spaces, hiding the instruction
+				Pulled_Line: String:= Get_Line(Source_File); --get entire line
+			begin
+				Ada.Strings.Fixed.Trim(Pulled_Line, White_Space, White_Space); --remove the leading spaces and tabs
+				Line:= SB_Long.To_Bounded_String(Source=>Pulled_Line, Drop=>Ada.Strings.Right); --move into bounded string
+			end;
+			
 			Index:= SB_Long.Index(Line, "-");
 			if Index > 0 then
 				SB_Long.Delete(Line, Index, SB_Long.Length(Line)); --delete the comment 
 			end if;
-
-			SB_Long.Trim(Line, White_Space, White_Space);
 
 			for I in Integer range 1..SB_Long.Length(Line) loop --loop to remove the tab character
 				if SB_Long.Element(Line, I) = Tab then
