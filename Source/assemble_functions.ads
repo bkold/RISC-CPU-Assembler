@@ -85,8 +85,11 @@ private
 
 	--called when unexpected errors occure from incorrect inputs. Sets the Error_Flag to true.
 	procedure Error_Register (Input: in String);
+	procedure Error_Missing_Operand;
 	procedure Error_Label;
 	procedure Error_Opcode (Input: in String);
 	procedure Error_Number (Input: in String);
+
+
 
 end Assemble_Functions;

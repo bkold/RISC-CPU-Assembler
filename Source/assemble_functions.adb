@@ -52,9 +52,9 @@ Package body Assemble_Functions is
 					end if;
 				end loop;
 
-				Ada.Strings.Fixed.Trim(Pulled_Line, White_Space, White_Space); --remove the leading spaces and tabs
-
 				Line:= SB.To_Bounded_String(Source=>Pulled_Line, Drop=>Ada.Strings.Right); --move into bounded string
+
+				SB.Trim(Line, White_Space, White_Space); --remove the leading spaces and tabs
 			end;			
 
 			return Line;
@@ -220,9 +220,9 @@ Package body Assemble_Functions is
 			Index_End:= SB.Index(Input, " ", Index_Start);
 			if Index_End = 0 then
 				Op_Code:= Get_Op_Code(SB.Bounded_Slice(Input, Index_Start, SB.Length(Input)));
-			else 
-				Op_Code:= Get_Op_Code(SB.Bounded_Slice(Input, Index_Start, Index_End-1));
+				return;
 			end if;
+			Op_Code:= Get_Op_Code(SB.Bounded_Slice(Input, Index_Start, Index_End-1));
 
 			Index_Start:= SB.Index_Non_Blank(Input, Index_End+1);
 			Index_End:= SB.Index(Input, ",", Index_Start);
@@ -263,7 +263,7 @@ Package body Assemble_Functions is
 		begin
 			case Op_Code is  
 				when BAL_32 =>
-					if SB.Element(Field_1, 1) in Letter then --if Field is label
+					if SB.Length(Field_1) /= 0 and then SB.Element(Field_1, 1) in Letter then --if Field is label
 						IMM:= Get_Binary_16_Signed_Label(Field_1);
 					else --it's a number
 						IMM:= Get_Binary_16_Signed(Field_1);
@@ -272,7 +272,7 @@ Package body Assemble_Functions is
 				when BEQ_32 =>
 					Field_1:= Get_Register(Field_1);
 					Field_2:= Get_Register(Field_2);
-					if SB.Element(Field_3, 1) in Letter then
+					if SB.Length(Field_3) /= 0 and then SB.Element(Field_3, 1) in Letter then
 						IMM:= Get_Binary_16_Signed_Label(Field_3);
 					else
 						IMM:= Get_Binary_16_Signed(Field_3);
@@ -280,14 +280,14 @@ Package body Assemble_Functions is
 
 				when BGEZ_32..BLEZAL_32 => 
 					Field_1:= Get_Register(Field_1);
-					if SB.Element(Field_2, 1) in Letter then
+					if SB.Length(Field_2) /= 0 and then SB.Element(Field_2, 1) in Letter then
 						IMM:= Get_Binary_16_Signed_Label(Field_2);
 					else
 						IMM:= Get_Binary_16_Signed(Field_2);
 					end if;
 
 				when J_32..SJAL_32 =>
-					if SB.Element(Field_1, 1) in Letter then
+					if SB.Length(Field_1) /= 0 and then SB.Element(Field_1, 1) in Letter then
 						IMM:= Get_Binary_26_Label(Field_1);
 					else
 						IMM:= Get_Binary_26(Field_1);
@@ -328,7 +328,7 @@ Package body Assemble_Functions is
 					Field_2:= Get_Binary_5(Field_2);
 						
 				when BCPUJ_32 =>
-					if SB.Element(Field_1, 1) in Letter then 
+					if SB.Length(Field_1) /= 0 and then SB.Element(Field_1, 1) in Letter then 
 						IMM:= Get_Binary_26_Label(Field_1);
 					else 
 						IMM:= Get_Binary_26(Field_1);
@@ -490,7 +490,7 @@ Package body Assemble_Functions is
 		exception
 			when Constraint_Error => 
 				Error_Opcode(SB.To_String(Input));
-				return BAL_32;
+				return EXIT_32;
 
 	end Get_Op_Code;
 
@@ -499,6 +499,10 @@ Package body Assemble_Functions is
 			Reg: Registers;
 
 		begin
+			if SB.Length(Input) = 0 then
+				Error_Missing_Operand;
+				return SB.To_Bounded_String("00000");
+			end if;
 			Reg:= Registers'Value(SB.To_String(Input));
 			case Reg is
 				when r0 => return SB.To_Bounded_String("00000");
@@ -549,6 +553,10 @@ Package body Assemble_Functions is
 			Temp_Integer: Integer_5;
 
 		begin
+			if SB.Length(Input) = 0 then
+				Error_Missing_Operand;
+				return SB.To_Bounded_String("00000");
+			end if;
 			Temp_Integer:= Integer_5'Value(SB.To_String(Input));
 			return Get_Binary_Parse(Base_String, Natural(Temp_Integer), 5);
 
@@ -566,6 +574,10 @@ Package body Assemble_Functions is
 			Temp_Integer: Integer_16;
 
 		begin
+			if SB.Length(Input) = 0 then
+				Error_Missing_Operand;
+				return SB.To_Bounded_String("0000000000000000");
+			end if;
 			Temp_Integer:= Integer_16'Value(SB.To_String(Input));
 			return Get_Binary_Parse(Base_String, Natural(Temp_Integer), 16);
 
@@ -583,6 +595,10 @@ Package body Assemble_Functions is
 			Temp_Integer: Integer_16;
 
 		begin
+			if SB.Length(Input) = 0 then
+				Error_Missing_Operand;
+				return SB.To_Bounded_String("0000000000000000");
+			end if;
 			Temp_Integer:= Integer_16'Value(SB.To_String(Input));
 			if Temp_Integer < 0 then
 				Temp_Integer:= Integer_16(Integer(Temp_Integer)+32768);
@@ -604,6 +620,10 @@ Package body Assemble_Functions is
 			Temp_Integer: Integer_26;
 
 		begin
+			if SB.Length(Input) = 0 then
+				Error_Missing_Operand;
+				return SB.To_Bounded_String("00000000000000000000000000");
+			end if;
 			Temp_Integer:= Integer_26'Value(SB.To_String(Input));
 			return Get_Binary_Parse(Base_String, Natural(Temp_Integer), 26);
 
@@ -611,7 +631,6 @@ Package body Assemble_Functions is
 			when Constraint_Error => 
 				Error_Number(SB.To_String(Input));
 				return SB.To_Bounded_String("00000000000000000000000000");
-
 	end Get_Binary_26;
 
 
@@ -673,10 +692,19 @@ Package body Assemble_Functions is
 	end Error_Register;
 
 
+	procedure Error_Missing_Operand is 
+		begin
+			Put(Positive'Image(Current_Line_Number));
+			Put_Line("::Missing Operand");
+			Error_Flag:= True;
+
+	end Error_Missing_Operand;
+
+
 	procedure Error_Label is 
 		begin
 			Put(Positive'Image(Current_Line_Number));
-			Put_Line(":: Label not valid");
+			Put_Line("::Label not valid");
 			Error_Flag:= True;
 
 	end Error_Label;

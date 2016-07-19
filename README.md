@@ -2,7 +2,9 @@
 Assembler to accompany the RISC CPU
 
 ##About
-This program is written with Ada2012 and requires a Ada2012 GNAT compiler. The assembler supports labels and comments. See the RISC-CPU Project for an Op_Codes Document. An example code can be seen in 'Sample Code.txt'. At the moment, disassembly is not a built in feature. 
+This program is written with Ada2012 and requires a Ada2012 GNAT compiler. The assembler supports labels and comments. See the RISC-CPU Project for an Op_Codes Document. An example code can be seen in 'Sample Code.txt'. At the moment, disassembly is not a built in feature. This assembler is designed to be bullet proof and give intelligent error messages to the user. It will never compile incorrect input or or visa versa. The parser accommodates for tabs as well as spaces and comments. This assembler can easily be retooled to support MIPS32 assembly.
+
+The sample code provided gives many examples for good and bad input.
 
 This system makes use of Getopt, so it is easy to use.
 The flags are 
