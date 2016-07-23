@@ -14,8 +14,7 @@ Package Assemble_Functions is
 	function Build (Source_File, Output_File: in out File_Type) return Boolean;
 
 private
-	package SB is new Ada.Strings.Bounded.Generic_Bounded_Length(Max => 32);
-	package SB_Long is new Ada.Strings.Bounded.Generic_Bounded_Length(Max => 255);
+	package SB is new Ada.Strings.Bounded.Generic_Bounded_Length(Max => 36);
 	package SB_IO is new Ada.Text_IO.Bounded_IO(Bounded=>SB);
 	package I_IO is new Ada.Text_IO.Integer_IO(Num=>Integer);
 	package Imm_Trie renames Improved_Trie;
@@ -32,6 +31,17 @@ private
 	type Registers is (r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11,
 		r12, r13, r14, r15, r16, r17, r18, r19, r20, r21, r22, r23, r24,
 		r25, r26, r27, r28, r29, r30, r31);
+
+	type Unsigned_32 is mod 2**32;
+	type Field_Record is record
+		Field_1: Unsigned_32;
+		Field_2: Unsigned_32;
+		Field_3: Unsigned_32;
+		IMM: Unsigned_32;
+		Base: Unsigned_32;
+		Special_1:Unsigned_32;
+		Special_2: Unsigned_32;
+	end record;
 
 	Current_Line_Number: Positive:= 1;
 	Instruction_Number: Positive:= 1;
@@ -60,28 +70,26 @@ private
 
 	--converts the fields into proper binary
 	--calls Get_register and Get_Binary_XX
-	procedure Translate_Fields (Op_Code: in Op_Codes; Field_1, Field_2, Field_3: in out SB.Bounded_String; IMM, Base: out SB.Bounded_String);
+	procedure Translate_Fields (Op_Code: in Op_Codes; Field_1_String, Field_2_String, Field_3_String: in SB.Bounded_String; Field_Numbers: in out Field_Record);
 
 	--looks up functions
 	--gets the special fields for a given opcode
-	procedure Get_Specials (Op_Code: in Op_Codes; Special_1, Special_2: out SB.Bounded_String);
+	procedure Get_Specials (Op_Code: in Op_Codes; Field_Numbers: in out Field_Record);
 
 	--converts a bounded_string to Op_Codes type
 	function Get_Op_Code (Input: in SB.Bounded_String) return Op_Codes;
 
 	--gets binary value of register
-	function Get_Register (Input: in SB.Bounded_String) return SB.Bounded_String;
+	function Get_Register (Input: in SB.Bounded_String) return Unsigned_32;
 
 	--gets Binary version of integer value
-	function Get_Binary_5 (Input: in SB.Bounded_String) return SB.Bounded_String;
-	function Get_Binary_16 (Input: in SB.Bounded_String) return SB.Bounded_String;
-	function Get_Binary_16_Signed (Input: in SB.Bounded_String) return SB.Bounded_String;
-	function Get_Binary_26 (Input: in SB.Bounded_String) return SB.Bounded_String;
+	function Get_Binary_5 (Input: in SB.Bounded_String) return Unsigned_32;
+	function Get_Binary_16 (Input: in SB.Bounded_String) return Unsigned_32;
+	function Get_Binary_16_Signed (Input: in SB.Bounded_String) return Unsigned_32;
+	function Get_Binary_26 (Input: in SB.Bounded_String) return Unsigned_32;
 
-	function Get_Binary_16_Signed_Label (Input: in SB.Bounded_String) return SB.Bounded_String;
-	function Get_Binary_26_Label (Input: in SB.Bounded_String) return SB.Bounded_String;
-	--generic parsing function to be used by the above Get_Binary functions
-	function Get_Binary_Parse (Base_String: in SB.Bounded_String; Num: in Natural; Length: in Positive) return SB.Bounded_String;
+	function Get_Binary_16_Signed_Label (Input: in SB.Bounded_String) return Unsigned_32;
+	function Get_Binary_26_Label (Input: in SB.Bounded_String) return Unsigned_32;
 
 	--called when unexpected errors occure from incorrect inputs. Sets the Error_Flag to true.
 	procedure Error_Register (Input: in String);
