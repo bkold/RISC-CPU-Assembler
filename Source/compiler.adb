@@ -10,13 +10,13 @@ use Ada.Text_IO;
 --assemble package handles each line
 
 procedure Compiler is
-		package B_S is new Ada.Strings.Bounded.Generic_Bounded_Length(Max => 50);
-		Mode: Integer:= 0;
-		Source_File: File_Type;
-		Output_File: File_Type;	
-		Error_Flag: Boolean:= True;
-		Output_File_Name: B_S.Bounded_String;
-		Input_File_Name: B_S.Bounded_String;
+	package SB is new Ada.Strings.Bounded.Generic_Bounded_Length(Max => 50);
+	Mode: Integer:= 0;
+	Source_File: File_Type;
+	Output_File: File_Type;	
+	Error_Flag: Boolean:= True;
+	Output_File_Name: SB.Bounded_String;
+	Input_File_Name: SB.Bounded_String;
 	begin
 		loop
 			case Getopt ("a d  o:") is
@@ -35,7 +35,7 @@ procedure Compiler is
 						return;
 					end if;
 				when 'o' =>
-					Output_File_Name:= B_S.To_Bounded_String(Parameter);
+					Output_File_Name:= SB.To_Bounded_String(Parameter);
 				when others =>
 					exit;
 			end case;
@@ -45,14 +45,14 @@ procedure Compiler is
 			Mode:= 2; --default to Mode 2
 		end if;
 
-		Input_File_Name:= B_S.To_Bounded_String(Get_Argument);
+		Input_File_Name:= SB.To_Bounded_String(Get_Argument);
 
-		if B_S.Length(Input_File_Name) = 0 then
+		if SB.Length(Input_File_Name) = 0 then
 			Put_Line("No file name given");
 			return;
 		end if;
 		--open files
-		Open(Source_File, In_File, B_S.To_String(Input_File_Name));
+		Open(Source_File, In_File, SB.To_String(Input_File_Name));
 		Create(File=>Output_File, Name=>"~Out.s");
 
 		if Mode = 2 then
@@ -65,11 +65,11 @@ procedure Compiler is
 		Close(Output_File);
 
 		if Error_Flag = False then
-			if B_S.Length(Output_File_Name) > 0 then
-				if Ada.Directories.Exists(B_S.To_String(Output_File_Name)) then
-					Ada.Directories.Delete_File(B_S.To_String(Output_File_Name));
+			if SB.Length(Output_File_Name) > 0 then
+				if Ada.Directories.Exists(SB.To_String(Output_File_Name)) then
+					Ada.Directories.Delete_File(SB.To_String(Output_File_Name));
 				end if;
-				Ada.Directories.Rename("~Out.s", B_S.To_String(Output_File_Name));
+				Ada.Directories.Rename("~Out.s", SB.To_String(Output_File_Name));
 			else
 				if Ada.Directories.Exists("Out.s") then
 					Ada.Directories.Delete_File("Out.s");

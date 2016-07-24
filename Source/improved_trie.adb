@@ -1,10 +1,10 @@
 package body Improved_Trie is
 
 	function Find_Move_Immediate_Child (Parent: in out Cursor; Element: Element_Type) return Boolean is
-			Tree_Leaf: Trie.Cursor;
+		Tree_Leaf: Trie.Cursor;
 		begin
 			Tree_Leaf:= Trie.First_Child(Parent);
-			while Trie.Has_Element(Tree_Leaf) loop						
+			while Trie.Has_Element(Tree_Leaf) loop	
 				if Trie.Element(Tree_Leaf) = Element then
 					Parent:=Tree_Leaf;
 					return True;
@@ -17,7 +17,7 @@ package body Improved_Trie is
 	end Find_Move_Immediate_Child;
 
 	function Find_Immediate_Child (Parent: Cursor; Element: Element_Type) return Cursor is
-			Tree_Leaf: Cursor;
+		Tree_Leaf: Cursor;
 		begin
 			Tree_Leaf:= First_Child(Parent);
 			while Has_Element(Tree_Leaf) loop						
@@ -32,13 +32,16 @@ package body Improved_Trie is
 	end Find_Immediate_Child;
 
 	function Add_String (T: in out Tree; Input: String; Address: Integer) return Boolean is
-			Tree_Leaf: Cursor:= T.Root;
-			Test_Element: Element_Type;
+		Tree_Leaf: Cursor:= T.Root;
+		Test_Element: Element_Type;
 		begin
 			Test_Element.B:= -1;
+			--Ada.Text_IO.Put_Line("----");
 			for I in Input'First..Input'Last loop
 				Test_Element.A:= Input(I);
+				--Ada.Text_IO.Put_Line(Character'Image(Test_Element.A));
 				if Find_Move_Immediate_Child(Tree_Leaf, Test_Element) = False then
+					--Ada.Text_IO.Put_Line("Appending " & Character'Image(Test_Element.A));
 					Append_Child(T, Tree_Leaf, Test_Element);
 					Tree_Leaf:= Last_Child(Tree_Leaf);
 				end if;	
@@ -54,8 +57,8 @@ package body Improved_Trie is
 	end Add_String;
 
 	function Find_String (T: Tree; Input: String) return Integer is
-			Tree_Leaf: Cursor:= T.Root;
-			Test_Element: Element_Type;
+		Tree_Leaf: Cursor:= T.Root;
+		Test_Element: Element_Type;
 		begin
 			for I in 1..Input'Length loop
 				Test_Element.A:= Input(I);
@@ -66,15 +69,5 @@ package body Improved_Trie is
 			return Element(Tree_Leaf).B;
 
 	end Find_String;
-
-	function "=" (Left, Right : Element_Type) return Boolean is
-		begin
-			if Left.A = Right.A then
-				return True;
-			else
-				return False;
-			end if;
-
-	end "=";
 
 end Improved_Trie;

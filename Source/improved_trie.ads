@@ -1,11 +1,14 @@
 with Ada.Containers.Multiway_Trees;
-
+with Ada.Text_IO;
 package Improved_Trie is
+
 	type Element_Type is record
 		A: Character;
 		B: Integer;
 	end record;
-	function "=" (Left, Right : Element_Type) return Boolean;
+	
+	function "=" (Left, Right : Element_Type) return Boolean is
+		(Left.A = Right.A);
 
 	--the Ada Multiway tree package backend to be used
 	package Trie is new Ada.Containers.Multiway_Trees (Element_Type=>Element_Type, "="=>"=");

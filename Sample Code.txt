@@ -8,18 +8,7 @@
 	[Label_1]
 	Add_32 	r1 , r2 , r3 --add_32 rd, rs, rt
 	--The following lines are intentionally wrong
-	Addf_32	r4, r6, r65
-	Add_32
-	Add_32 	r4, r5,
-	Add_32 	r4, r5
-	Add_32 	r4,
-	Add_32 	r4
-	Add_32 	r4 r5 r6
-	Add_32 	r4, r5, r6,
-	Add_32 	r4, r5, r45
-	J_32 		Label_2 
 
 	[Label_2]
 	Add_32 r1, r2, r3
-	J_32 Label_4
-	J_32
+	J_32 Label_1
