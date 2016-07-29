@@ -12,10 +12,9 @@ Package body Assemble_Functions is
 			while not End_Of_File(Source_File) loop
 				Current_Line:=Pull_Clean_Line(Source_File);	
 				if SB.Length(Current_Line) > 0 --if anything is in the string
-					and then SB.Element(Current_Line, SB.Index_Non_Blank(Current_Line)) /= '[' --and not a label line
-						and then SB.Element(Current_Line, SB.Index_Non_Blank(Current_Line)) /= '-' then --and not a comment line
-							SB_IO.Put_Line(Output_File, Assemble(Current_Line)); 
-							Instruction_Number:= Instruction_Number+1;	 --increment for label arithmetic 				
+					and then SB.Element(Current_Line, SB.Index_Non_Blank(Current_Line)) /= '[' then--and not a label line then
+						SB_IO.Put_Line(Output_File, Assemble(Current_Line)); 
+						Instruction_Number:= Instruction_Number+1;	 --increment for label arithmetic 				
 				end if;	
 				Current_Line_Number:=Current_Line_Number+1;			
 			end loop;
@@ -23,41 +22,38 @@ Package body Assemble_Functions is
 			Instruction_Number:= Saved_Instruction_Number;
 
 			return Error_Flag;
+			
 	end Build;
 
 	function Pull_Clean_Line(Source_File: in File_Type) return SB.Bounded_String is
 		Line: SB.Bounded_String;
 		Index: Natural;
+		Pulled_Line: String:= Get_Line(Source_File); --get entire line
 		begin
-			declare --resolve the case that the line is full of spaces, hiding the instruction
-				Pulled_Line: String:= Get_Line(Source_File); --get entire line
 
-				begin
+			Index:= Ada.Strings.Fixed.Index(Pulled_Line, "--");
+			if Index > 0 then
+				Ada.Strings.Fixed.Delete(Pulled_Line, Index, Pulled_Line'Length); --delete the comment 
+			end if;
 
-					Index:= Ada.Strings.Fixed.Index(Pulled_Line, "--");
+			for I of Pulled_Line loop --loop to remove the tab character
+				if I = Tab then
+					I:= ' ';
+				end if;
+			end loop;
+
+			for I in Pulled_Line'Range loop --remove consecutive spaces
+				if Pulled_Line(I) = ' ' then
+					Index:= Ada.Strings.Fixed.Index_Non_Blank(Pulled_Line, I);
 					if Index > 0 then
-						Ada.Strings.Fixed.Delete(Pulled_Line, Index, Pulled_Line'Length); --delete the comment 
+						Ada.Strings.Fixed.Replace_Slice(Pulled_Line, I, Index-1, " ");
 					end if;
+				end if;
+			end loop;
 
-					for I in Integer range 1..Pulled_Line'Length loop --loop to remove the tab character
-						if Pulled_Line(I) = Tab then
-							Pulled_Line(I):= ' ';
-						end if;
-					end loop;
+			Line:= SB.To_Bounded_String(Source=>Pulled_Line, Drop=>Ada.Strings.Right); --move into bounded string
 
-					for I in Integer range 1..Pulled_Line'Length loop --remove consecutive spaces
-						if Pulled_Line(I) = ' ' then
-							Index:= Ada.Strings.Fixed.Index_Non_Blank(Pulled_Line, I);
-							if Index > 0 then
-								Ada.Strings.Fixed.Replace_Slice(Pulled_Line, I, Index-1, " ");
-							end if;
-						end if;
-					end loop;
-
-					Line:= SB.To_Bounded_String(Source=>Pulled_Line, Drop=>Ada.Strings.Right); --move into bounded string
-
-					SB.Trim(Line, White_Space, White_Space); --remove the leading spaces and tabs
-			end;			
+			SB.Trim(Line, White_Space, White_Space); --remove the leading spaces and tabs	
 
 			return Line;
 
@@ -81,7 +77,7 @@ Package body Assemble_Functions is
 					if Char = '[' then
 						--Label
 						Add_Label(Current_Line, Instruction_Number);
-					elsif Char /= '-' then
+					else
 						--instruction
 						Instruction_Number:= Instruction_Number+1;
 					end if;
@@ -199,7 +195,7 @@ Package body Assemble_Functions is
 			Index_End:= Index(Input, " ", Index_Start);
 			if Index_End = 0 then
 				Op_Code:= Get_Op_Code(Bounded_Slice(Input, Index_Start, Length(Input)));
-				return;
+				goto Exit_Get_Fields;
 			end if;
 			Op_Code:= Get_Op_Code(Bounded_Slice(Input, Index_Start, Index_End-1));
 
@@ -207,7 +203,7 @@ Package body Assemble_Functions is
 			Index_End:= Index(Input, ",", Index_Start);
 			if Index_End = 0 then
 				Field_1:= Bounded_Slice(Input, Index_Start, Length(Input));
-				return;
+				goto Exit_Get_Fields;
 			end if;
 			Field_1:= Bounded_Slice(Input, Index_Start, Index_End-1);
 
@@ -215,21 +211,16 @@ Package body Assemble_Functions is
 			Index_End:= Index(Input, ",", Index_Start);
 			if Index_End = 0 then
 				Field_2:= Bounded_Slice(Input, Index_Start, Length(Input));
-				return;
+				goto Exit_Get_Fields;
 			end if;
 			Field_2:= Bounded_Slice(Input, Index_Start, Index_End-1);
 
 			Index_Start:= Index_Non_Blank(Input, Index_End+1);
-			Index_End:= Index(Input, " ", Index_Start);
-			if Index_End = 0 then
-				Field_3:= Bounded_Slice(Input, Index_Start, Length(Input));
-				return;
-			end if;
-			Field_3:= Bounded_Slice(Input, Index_Start, Index_End-1);
+			Field_3:= Bounded_Slice(Input, Index_Start, Length(Input));
 
-		exception 
-			when others => return;
-
+			<<Exit_Get_Fields>>
+			return;
+			
 	end Get_Fields;
 
 
@@ -241,33 +232,41 @@ Package body Assemble_Functions is
 			case Op_Code is  
 				when BAL_32 =>
 					if Length(Field_1_String) /= 0 and then Element(Field_1_String, 1) in Letter then --if Field is label
-						Field_Numbers.IMM:= Get_Binary_16_Signed_Label(Field_1_String);
+						-- Field_Numbers.IMM:= Get_Binary_16_Signed_Label(Field_1_String);
+						Field_Numbers.IMM:= Get_Binary_Label(Field_1_String, Signed_Bits_16);
 					else --it's a number
-						Field_Numbers.IMM:= Get_Binary_16_Signed(Field_1_String);
+						-- Field_Numbers.IMM:= Get_Binary_16_Signed(Field_1_String);
+						Field_Numbers.IMM:= Get_Binary(Field_1_String, Signed_Bits_16);
 					end if;
 
 				when BEQ_32 =>
 					Field_Numbers.Field_1:= Get_Register(Field_1_String);
 					Field_Numbers.Field_2:= Get_Register(Field_2_String);
 					if Length(Field_3_String) /= 0 and then Element(Field_3_String, 1) in Letter then
-						Field_Numbers.IMM:= Get_Binary_16_Signed_Label(Field_3_String);
+						-- Field_Numbers.IMM:= Get_Binary_16_Signed_Label(Field_3_String);
+						Field_Numbers.IMM:= Get_Binary_Label(Field_3_String, Signed_Bits_16);
 					else
-						Field_Numbers.IMM:= Get_Binary_16_Signed(Field_3_String);
+						-- Field_Numbers.IMM:= Get_Binary_16_Signed(Field_3_String);
+						Field_Numbers.IMM:= Get_Binary(Field_3_String, Signed_Bits_16);
 					end if;
 
 				when BGEZ_32..BLEZAL_32 => 
 					Field_Numbers.Field_1:= Get_Register(Field_1_String);
 					if Length(Field_2_String) /= 0 and then Element(Field_2_String, 1) in Letter then
-						Field_Numbers.IMM:= Get_Binary_16_Signed_Label(Field_2_String);
+						-- Field_Numbers.IMM:= Get_Binary_16_Signed_Label(Field_2_String);
+						Field_Numbers.IMM:= Get_Binary_Label(Field_2_String, Signed_Bits_16);
 					else
-						Field_Numbers.IMM:= Get_Binary_16_Signed(Field_2_String);
+						-- Field_Numbers.IMM:= Get_Binary_16_Signed(Field_2_String);
+						Field_Numbers.IMM:= Get_Binary(Field_2_String, Signed_Bits_16);
 					end if;
 
 				when J_32..SJAL_32 =>
 					if Length(Field_1_String) /= 0 and then Element(Field_1_String, 1) in Letter then
-						Field_Numbers.IMM:= Get_Binary_26_Label(Field_1_String);
+						-- Field_Numbers.IMM:= Get_Binary_26_Label(Field_1_String);
+						Field_Numbers.IMM:= Get_Binary_Label(Field_1_String, Bits_26);
 					else
-						Field_Numbers.IMM:= Get_Binary_26(Field_1_String);
+						-- Field_Numbers.IMM:= Get_Binary_26(Field_1_String);
+						Field_Numbers.IMM:= Get_Binary(Field_1_String, Bits_26);
 					end if;
 
 				when JALR_32..JR_32 =>
@@ -281,42 +280,53 @@ Package body Assemble_Functions is
 				when ADDI_32..XORI_32 =>
 					Field_Numbers.Field_1:= Get_Register(Field_1_String);
 					Field_Numbers.Field_2:= Get_Register(Field_2_String);
-					Field_Numbers.IMM:= Get_Binary_16(Field_3_String);
+					-- Field_Numbers.IMM:= Get_Binary_16(Field_3_String);
+					Field_Numbers.IMM:= Get_Binary(Field_3_String, Bits_16);
 
 				when ADDIU_32..SUBIU_32 =>
 					Field_Numbers.Field_1:= Get_Register(Field_1_String);
 					Field_Numbers.Field_2:= Get_Register(Field_2_String);
-					Field_Numbers.IMM:= Get_Binary_16_Signed(Field_3_String);
+					-- Field_Numbers.IMM:= Get_Binary_16_Signed(Field_3_String);
+					Field_Numbers.IMM:= Get_Binary(Field_3_String, Signed_Bits_16);
 
 				when LUI_32 => 
 					Field_Numbers.Field_1:= Get_Register(Field_1_String);
-					Field_Numbers.IMM:= Get_Binary_16_Signed(Field_2_String);
+					-- Field_Numbers.IMM:= Get_Binary_16_Signed(Field_2_String);
+					Field_Numbers.IMM:= Get_Binary(Field_2_String, Signed_Bits_16);
 					Field_Numbers.Base:= 0;
 
 				when LW_32..SW_32 =>
 					Field_Numbers.Field_1:= Get_Register(Field_1_String);
 					Index_Start:= Index(Field_2_String, "(", 1);
 					Index_End:= Index(Field_2_String, ")", Index_Start);
-					Field_Numbers.Base:= Get_Binary_5(Bounded_Slice(Field_2_String, Index_Start+1, Index_End-1));
-					Field_Numbers.IMM:= Get_Binary_16_Signed(Bounded_Slice(Field_2_String, 1, Index_Start-1));
+					-- Field_Numbers.Base:= Get_Binary_5(Bounded_Slice(Field_2_String, Index_Start+1, Index_End-1));
+					Field_Numbers.Base:= Get_Binary(Bounded_Slice(Field_2_String, Index_Start+1, Index_End-1), Bits_5);
+					-- Field_Numbers.IMM:= Get_Binary_16_Signed(Bounded_Slice(Field_2_String, 1, Index_Start-1));
+					Field_Numbers.IMM:= Get_Binary(Bounded_Slice(Field_2_String, 1, Index_Start-1), Signed_Bits_16);
 
 				when BCPU_32 =>
-					Field_Numbers.Field_1:= Get_Binary_5(Field_1_String);
-					Field_Numbers.Field_2:= Get_Binary_5(Field_2_String);
+					-- Field_Numbers.Field_1:= Get_Binary_5(Field_1_String);
+					Field_Numbers.Field_1:= Get_Binary(Field_1_String, Bits_5);
+					-- Field_Numbers.Field_2:= Get_Binary_5(Field_2_String);
+					Field_Numbers.Field_2:= Get_Binary(Field_2_String, Bits_5);
 						
 				when BCPUJ_32 =>
 					if Length(Field_1_String) /= 0 and then Element(Field_1_String, 1) in Letter then 
-						Field_Numbers.IMM:= Get_Binary_26_Label(Field_1_String);
+						-- Field_Numbers.IMM:= Get_Binary_26_Label(Field_1_String);
+						Field_Numbers.IMM:= Get_Binary_Label(Field_1_String, Bits_26);
 					else 
-						Field_Numbers.IMM:= Get_Binary_26(Field_1_String);
+						-- Field_Numbers.IMM:= Get_Binary_26(Field_1_String);
+						Field_Numbers.IMM:= Get_Binary(Field_1_String, Bits_26);
 					end if;
 
 				when BCPUJR_32 => 
 					Field_Numbers.Field_1:= Get_Register(Field_1_String);
 
 				when SLEEP_32 =>
-					Field_Numbers.Field_1:= Get_Binary_5(Field_1_String);
-					Field_Numbers.Field_2:= Get_Binary_16(Field_2_String);
+					-- Field_Numbers.Field_1:= Get_Binary_5(Field_1_String);
+					Field_Numbers.Field_1:= Get_Binary(Field_1_String, Bits_5);
+					-- Field_Numbers.Field_2:= Get_Binary_16(Field_2_String);
+					Field_Numbers.Field_2:= Get_Binary(Field_2_String, Bits_16);
 
 				when others =>
 					return;
@@ -364,115 +374,77 @@ Package body Assemble_Functions is
 	end Get_Register;
 
 
-	function Get_Binary_5 (Input: in SB.Bounded_String) return Unsigned_32 is
-		type Integer_5 is range 0..31;
-		Temp_Integer: Integer_5;
+	function Get_Binary (Input: in SB.Bounded_String; Length: in Valid_Binary) return Unsigned_32 is
+		subtype Integer_5 is Integer range 0..31;
+		subtype Integer_16 is Integer range 0..65535;
+		subtype Integer_16_Signed is Integer range -32768..32767;
+		subtype Integer_26 is Integer range 0..67108863;
+		Temp_Integer: Integer;
 		begin
 			if SB.Length(Input) = 0 then
 				Error_Missing_Operand;
 				return 0;
 			end if;
-			Temp_Integer:= Integer_5'Value(SB.To_String(Input));
+			Temp_Integer:= Integer'Value(SB.To_String(Input));
+
+			case Length is
+				when Bits_5 => 
+					if Temp_Integer not in Integer_5 then
+						goto Not_In_Range;
+					end if;
+				when Bits_16 => 
+					if Temp_Integer not in Integer_16 then
+						goto Not_In_Range;
+					end if;
+				when Signed_Bits_16 => 
+					if Temp_Integer not in Integer_16_Signed then
+						goto Not_In_Range;
+					end if;
+				when Bits_26 => 
+					if Temp_Integer not in Integer_26 then
+						goto Not_In_Range;
+					end if;
+			end case;
+
 			return Unsigned_32(Temp_Integer);
 
-		exception
-			when Constraint_Error => --gets called when Temp_Integer is out of expected range
-				Error_Number(SB.To_String(Input));
-				return 0;
-				
-	end Get_Binary_5;
-
-
-	function Get_Binary_16 (Input: in SB.Bounded_String) return Unsigned_32 is
-		type Integer_16 is range 0..65535;
-		Temp_Integer: Integer_16;
-		begin
-			if SB.Length(Input) = 0 then
-				Error_Missing_Operand;
-				return 0;
-			end if;
-			Temp_Integer:= Integer_16'Value(SB.To_String(Input));
-			return Unsigned_32(Temp_Integer);
+			<<Not_In_Range>>
+			Error_Number(SB.To_String(Input));
+			return 0;
 
 		exception
 			when Constraint_Error => 
 				Error_Number(SB.To_String(Input));
 				return 0;
 
-	end Get_Binary_16;
+	end Get_Binary;
 
 
-	function Get_Binary_16_Signed (Input: in SB.Bounded_String) return Unsigned_32 is
-		type Integer_16 is range -32768..32767;
-		Temp_Integer: Integer_16;
-		begin
-			if SB.Length(Input) = 0 then
-				Error_Missing_Operand;
-				return 0;
-			end if;
-			Temp_Integer:= Integer_16'Value(SB.To_String(Input));
-			return (Unsigned_32(Temp_Integer) and 65535); --cut off the leading 1s
-
-		exception
-			when Constraint_Error => 
-				Error_Number(SB.To_String(Input));
-				return 0;
-
-	end Get_Binary_16_Signed;
-
-
-	function Get_Binary_26 (Input: in SB.Bounded_String) return Unsigned_32 is		
-		type Integer_26 is range 0..67108863;
-		Temp_Integer: Integer_26;
-		begin
-			if SB.Length(Input) = 0 then
-				Error_Missing_Operand;
-				return 0;
-			end if;
-			Temp_Integer:= Integer_26'Value(SB.To_String(Input));
-			return Unsigned_32(Temp_Integer);
-
-		exception
-			when Constraint_Error => 
-				Error_Number(SB.To_String(Input));
-				return 0;
-	end Get_Binary_26;
-
-
-	function Get_Binary_16_Signed_Label (Input: in SB.Bounded_String) return Unsigned_32 is
+	function Get_Binary_Label (Input: in SB.Bounded_String; Length: in Valid_Binary) return Unsigned_32 is
 		Label_Integer: Integer;
 		begin
 			Label_Integer:= Imm_Trie.Find_String(Label_Tree, SB.To_String(Input));
 			if Label_Integer = -1 then --label is not found
 				Error_Label;
 				return 0;
-			else	
-				Label_Integer:= Label_Integer - (Instruction_Number + 1); --this is a relative branch
-				return Get_Binary_16_Signed(SB.To_Bounded_String(Integer'Image(Label_Integer)));
-			end if;
-	end Get_Binary_16_Signed_Label;
+			end if;					
 
+			case Length is
+				when Signed_Bits_16 =>
+					Label_Integer:= Label_Integer - (Instruction_Number + 1); --this is a relative branch					
+				when Bits_26 =>
+					null;
+				when others =>
+					raise Constraint_Error;
+			end case;		
+			return Get_Binary(SB.To_Bounded_String(Integer'Image(Label_Integer)), Length);
 
-	function Get_Binary_26_Label (Input: in SB.Bounded_String) return Unsigned_32 is
-		Label_Integer: Integer;
-		IMM: SB.Bounded_String;
-		begin
-			Label_Integer:= Imm_Trie.Find_String(Label_Tree, SB.To_String(Input));
-			if Label_Integer = -1 then --label is not found
-				Error_Label;
-				return 0;
-			end if;
-							
-			return Get_Binary_26(SB.To_Bounded_String(Integer'Image(Label_Integer)));
-	end Get_Binary_26_Label;
+	end Get_Binary_Label;
 
 
 	procedure Error_Register (Input: in String) is 
 		begin
-			Put(Positive'Image(Current_Line_Number));
-			Put("::Register '");
-			Put(Input);
-			Put_Line("' not valid");
+			Put_Line(Positive'Image(Current_Line_Number) & "::Register '" & Input & "' not valid");
 			Error_Flag:= True;
 
 	end Error_Register;
@@ -480,8 +452,7 @@ Package body Assemble_Functions is
 
 	procedure Error_Missing_Operand is 
 		begin
-			Put(Positive'Image(Current_Line_Number));
-			Put_Line("::Missing Operand");
+			Put_Line(Positive'Image(Current_Line_Number) & "::Missing Operand");
 			Error_Flag:= True;
 
 	end Error_Missing_Operand;
@@ -489,8 +460,7 @@ Package body Assemble_Functions is
 
 	procedure Error_Label is 
 		begin
-			Put(Positive'Image(Current_Line_Number));
-			Put_Line("::Label not valid");
+			Put_Line(Positive'Image(Current_Line_Number) & "::Label not valid");
 			Error_Flag:= True;
 
 	end Error_Label;
@@ -498,10 +468,7 @@ Package body Assemble_Functions is
 
 	procedure Error_Number (Input: in String) is
 		begin
-			Put(Positive'Image(Current_Line_Number));
-			Put("::Value '");
-			Put(Input);
-			Put_Line("' not valid");
+			Put_Line(Positive'Image(Current_Line_Number) & "::Value '" & Input & "' not valid");
 			Error_Flag:= True;
 
 	end Error_Number;
@@ -509,10 +476,7 @@ Package body Assemble_Functions is
 
 	procedure Error_Opcode (Input: in String) is
 		begin
-			Put(Positive'Image(Current_Line_Number));
-			Put("::Op_Code '");
-			Put(Input);
-			Put_Line("' not valid");
+			Put_Line(Positive'Image(Current_Line_Number) & "::Op_Code '" & Input & "' not valid");
 			Error_Flag:= True;
 
 	end Error_Opcode;

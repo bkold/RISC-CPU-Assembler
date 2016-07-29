@@ -65,8 +65,10 @@ private
 		Special_2: Unsigned_32;
 	end record;
 
-	Current_Line_Number: Positive:= 1;
-	Instruction_Number: Natural:= 1;
+	type Valid_Binary is (Bits_5, Bits_16, Signed_Bits_16, Bits_26);
+
+	Current_Line_Number: Positive;
+	Instruction_Number: Natural;
 	Error_Flag: Boolean;
 	Label_Tree: Imm_Trie.Trie.Tree;
 	Tab: constant Character:= Character'Val(9);
@@ -105,13 +107,9 @@ private
 	function Get_Register (Input: in SB.Bounded_String) return Unsigned_32;
 
 	--gets Binary version of integer value
-	function Get_Binary_5 (Input: in SB.Bounded_String) return Unsigned_32;
-	function Get_Binary_16 (Input: in SB.Bounded_String) return Unsigned_32;
-	function Get_Binary_16_Signed (Input: in SB.Bounded_String) return Unsigned_32;
-	function Get_Binary_26 (Input: in SB.Bounded_String) return Unsigned_32;
-
-	function Get_Binary_16_Signed_Label (Input: in SB.Bounded_String) return Unsigned_32;
-	function Get_Binary_26_Label (Input: in SB.Bounded_String) return Unsigned_32;
+	function Get_Binary (Input: in SB.Bounded_String; Length: in Valid_Binary) return Unsigned_32;
+	--gets Binary address of label
+	function Get_Binary_Label (Input: in SB.Bounded_String; Length: in Valid_Binary) return Unsigned_32;
 
 	--called when unexpected errors occure from incorrect inputs. Sets the Error_Flag to true.
 	procedure Error_Register (Input: in String);
