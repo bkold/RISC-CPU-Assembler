@@ -201,7 +201,7 @@ Package body Assemble_Functions is
 
 			Index_Start:= Index_Non_Blank(Input, Index_End+1);
 			Index_End:= Index(Input, ",", Index_Start);
-			if Index_End = 0 then
+			if Index_End = 0 or Index_End = Length(Input) then
 				Field_1:= Bounded_Slice(Input, Index_Start, Length(Input));
 				goto Exit_Get_Fields;
 			end if;
@@ -209,7 +209,7 @@ Package body Assemble_Functions is
 
 			Index_Start:= Index_Non_Blank(Input, Index_End+1);
 			Index_End:= Index(Input, ",", Index_Start);
-			if Index_End = 0 then
+			if Index_End = 0 or Index_End = Length(Input) then
 				Field_2:= Bounded_Slice(Input, Index_Start, Length(Input));
 				goto Exit_Get_Fields;
 			end if;
