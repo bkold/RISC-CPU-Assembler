@@ -66,6 +66,7 @@ private
 	end record;
 
 	type Valid_Binary is (Bits_5, Bits_16, Signed_Bits_16, Bits_26);
+	subtype Valid_Binary_Labels is Valid_Binary range Signed_Bits_16..Bits_26;
 
 	Current_Line_Number: Positive;
 	Instruction_Number: Natural;
@@ -76,21 +77,21 @@ private
 	White_Space: constant Ada.Strings.Maps.Character_Set:= Ada.Strings.Maps.To_Set(White_Space_Sequ);
 
 	--receives a line of assembly and returns a finished binary string.
-	function Assemble (Input: in SB.Bounded_String) return SB.Bounded_String;
+	function Assemble (Input: in String) return SB.Bounded_String;
 
 	--returns a clean bounded string. No tabs, not leading and trailing space, and no comment
-	function Pull_Clean_Line (Source_File: in File_Type) return SB.Bounded_String;
+	function Pull_Clean_Line (Source_File: in File_Type) return String;
 
 	--iterates the file, finding labels: [EXAMPLE]
 	procedure Get_Labels (Source_File: in out File_Type);
 
 	--adds the found label to a trie
-	procedure Add_Label (Current_Line: in SB.Bounded_String; Instruction_Number: in Integer);
+	procedure Add_Label (Current_Line: in String; Instruction_Number: in Integer);
 
 	--parses string
 	--Op_Code is a Op_Codes type for case statements
 	--Field_1-3 are the operands for an instruction
-	procedure Get_Fields (Input: in SB.Bounded_String; Op_Code: out Op_Codes; Field_1, Field_2, Field_3: out SB.Bounded_String);
+	procedure Get_Fields (Input: in String; Op_Code: out Op_Codes; Field_1, Field_2, Field_3: out SB.Bounded_String);
 
 	--converts the fields into proper binary
 	--calls Get_register and Get_Binary_XX
@@ -101,22 +102,25 @@ private
 	procedure Get_Specials (Op_Code: in Op_Codes; Field_Numbers: in out Field_Record);
 
 	--converts a bounded_string to Op_Codes type
-	function Get_Op_Code (Input: in SB.Bounded_String) return Op_Codes;
+	function Get_Op_Code (Input: in String) return Op_Codes;
 
 	--gets binary value of register
 	function Get_Register (Input: in SB.Bounded_String) return Unsigned_32;
 
 	--gets Binary version of integer value
 	function Get_Binary (Input: in SB.Bounded_String; Length: in Valid_Binary) return Unsigned_32;
+	
 	--gets Binary address of label
-	function Get_Binary_Label (Input: in SB.Bounded_String; Length: in Valid_Binary) return Unsigned_32;
+	function Get_Binary_Label (Input: in SB.Bounded_String; Length: in Valid_Binary_Labels) return Unsigned_32;
 
 	--called when unexpected errors occure from incorrect inputs. Sets the Error_Flag to true.
 	procedure Error_Register (Input: in String);
 	procedure Error_Missing_Operand;
 	procedure Error_Label;
+	procedure Error_Length;
 	procedure Error_Opcode (Input: in String);
 	procedure Error_Number (Input: in String);
+	procedure Error_Unknown (Input: in String);
 
 
 

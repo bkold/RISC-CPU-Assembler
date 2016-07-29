@@ -15,5 +15,5 @@ The flags are
   
 Example call
 
-    ./risc-cpu-asm Sample\ Code.txt -a -o Sample.s
+    ./risc-cpu-asm example.asm -a -o Sample.s
 

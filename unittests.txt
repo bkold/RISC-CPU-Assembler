@@ -1,0 +1,26 @@
+----------------------
+--labels are surrounded by barackets, no spaces for name
+--comments are lines starting with two dashes
+--you may write code and finish with a comment
+--only one instruction per line
+----------------------
+	--stress test
+	[ Label_1 ]
+	Add_32 r1 , r2 , r3	--add_32 rd, rs, rt, this is correct
+	Add_32 r1 , r2 , r3	-this is not a correct comment
+	Addf_32 r1, r2, r3	--not an opcode
+	Add_32              --trailing spaces, below is no trailing spaces
+	Add_32
+	Add_32 r1, R2, 		--missing an argument
+	Add_32 r1 r2 r3		--no commas
+	J_32 Label_3		--not a label
+	J_32 Really_Loooooooooooooooooooooong_Label_3	--argument is too long
+	J_32 				--no argument
+
+	[Label_2]
+	Add_32 r1, r2, r3
+	J_32 Label_1
+
+	[Really_Loooooooooooooooooooooong_Label_3]	--label is too long
+	Add_32 r1, r2, r3
+	J_32 Label_1 
