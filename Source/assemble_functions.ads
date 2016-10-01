@@ -10,7 +10,7 @@ Package Assemble_Functions is
 	
 	--receives the input file and a created output file.
 	--returns a completed output file and whether the operation had errors or not
-	function Build (Source_File, Output_File: in out File_Type) return Boolean;
+	function Build (Source_File, Output_File : in out File_Type) return Boolean;
 
 private
 
@@ -34,7 +34,7 @@ private
 		SW_32,		BCPU_32, 	BCPUJ_32, 	BCPUJR_32, 	EXIT_32, 	SLEEP_32);
 
 	--2Darray of special numbers for opcodes. They are mapped to the above op_codes 
-	Specials_Array: constant Unsigned_32_Array:= (
+	Specials_Array : constant Unsigned_32_Array := (
 		(0, 		0, 		2#00010#, 	2#10010#, 	2#00011#, 	2#10011#, 	2#00100#, 	2#10100#, 	2#00101#, 	2#10101#, 
 		 2#000101#,	2#000111#, 	2#001111#, 	2#11000#, 	2#01000#, 	0, 		0, 		0, 		0, 		0, 
 		 0, 		0, 		0, 		0, 		0, 		0, 		0, 		0, 		0, 		0, 
@@ -58,8 +58,8 @@ private
 		Field_1: Unsigned_32;
 		Field_2: Unsigned_32;
 		Field_3: Unsigned_32;
-		IMM: Unsigned_32;
-		Base: Unsigned_32;
+		IMM : Unsigned_32;
+		Base : Unsigned_32;
 		Special_1:Unsigned_32;
 		Special_2: Unsigned_32;
 	end record;
@@ -67,59 +67,59 @@ private
 	type Valid_Binary is (Bits_5, Bits_16, Signed_Bits_16, Bits_26);
 	subtype Valid_Binary_Labels is Valid_Binary range Signed_Bits_16..Bits_26;
 
-	Current_Line_Number: Positive;
-	Instruction_Number: Natural;
-	Error_Flag: Boolean;
-	Label_Tree: Imm_Trie.Trie.Tree;
-	Tab: constant Character:= Character'Val(9);
-	White_Space_Sequ: constant Ada.Strings.Maps.Character_Sequence := ' ' & Tab;
-	White_Space: constant Ada.Strings.Maps.Character_Set:= Ada.Strings.Maps.To_Set(White_Space_Sequ);
+	Current_Line_Number : Positive;
+	Instruction_Number : Natural;
+	Error_Flag : Boolean;
+	Label_Tree : Imm_Trie.Trie.Tree;
+	Tab : constant Character := Character'Val(9);
+	White_Space_Sequ : constant Ada.Strings.Maps.Character_Sequence := ' ' & Tab;
+	White_Space : constant Ada.Strings.Maps.Character_Set := Ada.Strings.Maps.To_Set(White_Space_Sequ);
 
 	--receives a line of assembly and returns a finished binary string.
-	function Assemble (Input: in String) return SB.Bounded_String;
+	function Assemble (Input : in String) return SB.Bounded_String;
 
 	--returns a clean bounded string. No tabs, not leading and trailing space, and no comment
-	function Pull_Clean_Line (Source_File: in File_Type) return String;
+	function Pull_Clean_Line (Source_File : in File_Type) return String;
 
-	--iterates the file, finding labels: [EXAMPLE]
-	procedure Get_Labels (Source_File: in out File_Type);
+	--iterates the file, finding labels : [EXAMPLE]
+	procedure Get_Labels (Source_File : in out File_Type);
 
 	--adds the found label to a trie
-	procedure Add_Label (Current_Line: in String; Instruction_Number: in Integer);
+	procedure Add_Label (Current_Line : in String; Instruction_Number : in Integer);
 
 	--parses string
 	--Op_Code is a Op_Codes type for case statements
 	--Field_1-3 are the operands for an instruction
-	procedure Get_Fields (Input: in String; Op_Code: out Op_Codes; Field_1, Field_2, Field_3: out SB.Bounded_String);
+	procedure Get_Fields (Input : in String; Op_Code : out Op_Codes; Field_1, Field_2, Field_3: out SB.Bounded_String);
 
 	--converts the fields into proper binary
 	--calls Get_register and Get_Binary_XX
-	procedure Translate_Fields (Op_Code: in Op_Codes; Field_1_String, Field_2_String, Field_3_String: in SB.Bounded_String; Field_Numbers: in out Field_Record);
+	procedure Translate_Fields (Op_Code : in Op_Codes; Field_1_String, Field_2_String, Field_3_String : in SB.Bounded_String; Field_Numbers : in out Field_Record);
 
 	--looks up functions
 	--gets the special fields for a given opcode
-	procedure Get_Specials (Op_Code: in Op_Codes; Field_Numbers: in out Field_Record);
+	procedure Get_Specials (Op_Code : in Op_Codes; Field_Numbers : in out Field_Record);
 
 	--converts a bounded_string to Op_Codes type
-	function Get_Op_Code (Input: in String) return Op_Codes;
+	function Get_Op_Code (Input : in String) return Op_Codes;
 
 	--gets binary value of register
-	function Get_Register (Input: in SB.Bounded_String) return Unsigned_32;
+	function Get_Register (Input : in SB.Bounded_String) return Unsigned_32;
 
 	--gets Binary version of integer value
-	function Get_Binary (Input: in SB.Bounded_String; Length: in Valid_Binary) return Unsigned_32;
+	function Get_Binary (Input : in SB.Bounded_String; Length : in Valid_Binary) return Unsigned_32;
 	
 	--gets Binary address of label
-	function Get_Binary_Label (Input: in SB.Bounded_String; Length: in Valid_Binary_Labels) return Unsigned_32;
+	function Get_Binary_Label (Input : in SB.Bounded_String; Length : in Valid_Binary_Labels) return Unsigned_32;
 
 	--called when unexpected errors occure from incorrect inputs. Sets the Error_Flag to true.
-	procedure Error_Register (Input: in String);
+	procedure Error_Register (Input : in String);
 	procedure Error_Missing_Operand;
 	procedure Error_Label;
 	procedure Error_Length;
-	procedure Error_Opcode (Input: in String);
-	procedure Error_Number (Input: in String);
-	procedure Error_Unknown (Input: in String);
+	procedure Error_Opcode (Input : in String);
+	procedure Error_Number (Input : in String);
+	procedure Error_Unknown (Input : in String);
 
 
 
