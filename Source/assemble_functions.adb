@@ -1,9 +1,10 @@
+with Ada.Strings.Fixed;
 Package body Assemble_Functions is
 
 	function Build (Source_File, Output_File: in out File_Type) return Boolean is
 		use Ada.Strings.Fixed;
-		Saved_Current_Line_Number: Positive:= Current_Line_Number;
-		Saved_Instruction_Number: Natural:= Instruction_Number;
+		Saved_Current_Line_Number: constant Positive:= Current_Line_Number;
+		Saved_Instruction_Number: constant Natural:= Instruction_Number;
 		begin
 			Current_Line_Number:=1;			
 			Instruction_Number:= 0;
@@ -11,7 +12,7 @@ Package body Assemble_Functions is
 			Get_Labels(Source_File);
 			while not End_Of_File(Source_File) loop
 				declare
-					Current_Line: String:= Pull_Clean_Line(Source_File);
+					Current_Line: constant String:= Pull_Clean_Line(Source_File);
 					First_Index: Natural;
 					begin
 						First_Index:= Index_Non_Blank(Current_Line);
@@ -53,14 +54,14 @@ Package body Assemble_Functions is
 
 
 	procedure Get_Labels (Source_File: in out File_Type) is
-		Saved_Current_Line_Number: Positive:= Current_Line_Number;
-		Saved_Instruction_Number: Natural:= Instruction_Number;
+		Saved_Current_Line_Number: constant Positive:= Current_Line_Number;
+		Saved_Instruction_Number: constant Natural:= Instruction_Number;
 		begin
 			Current_Line_Number:=1;
 			Instruction_Number:= 0;
 			while not End_Of_File(Source_File) loop
 				declare
-					Current_Line: String:= Pull_Clean_Line(Source_File);
+					Current_Line: constant String:= Pull_Clean_Line(Source_File);
 					First_Index: Natural;
 					begin
 						First_Index:= Ada.Strings.Fixed.Index_Non_Blank(Current_Line);

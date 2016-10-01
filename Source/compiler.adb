@@ -40,10 +40,6 @@ procedure Compiler is
 					exit;
 			end case;
 		end loop;
-		
-		if Mode = 0 then
-			Mode:= 2; --default to Mode 2
-		end if;
 
 		Input_File_Name:= SB.To_Bounded_String(Get_Argument);
 
@@ -55,7 +51,7 @@ procedure Compiler is
 		Open(Source_File, In_File, SB.To_String(Input_File_Name));
 		Create(File=>Output_File, Name=>"~Out.s");
 
-		if Mode = 2 then
+		if Mode = 0 or else Mode = 2 then
 			Error_Flag:= Assemble_Functions.Build(Source_File, Output_File);
 		elsif Mode = 1 then
 			Put_Line("Disassemble is not supported yet");

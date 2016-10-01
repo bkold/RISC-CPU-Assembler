@@ -1,5 +1,4 @@
 with Ada.Containers.Multiway_Trees;
-with Ada.Text_IO;
 package Improved_Trie is
 
 	type Element_Type is record
